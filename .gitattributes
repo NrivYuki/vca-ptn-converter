@@ -1,0 +1,2 @@
+# VCA files use CR/LF as the record separator; keep them byte-for-byte
+*.vca -text
