@@ -372,7 +372,7 @@ tabs.forEach((b, i) => {
   drop.addEventListener('click', () => input.click());
   drop.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); input.click(); } });
   input.addEventListener('change', () => { readFile(input.files[0]); input.value = ''; });
-  $('#sample').addEventListener('click', () => load('frame-both.vca', window.SAMPLE_VCA));
+  $('#sample').addEventListener('click', () => load('_SAMPLE0001.vca', window.SAMPLE_VCA));
   $('#pasteApply').addEventListener('click', () => {
     const t = $('#pasteText').value;
     if (t.trim()) load('貼り付けたテキスト', t);
@@ -705,7 +705,7 @@ tabs.forEach((b, i) => {
     s.tip.setAttribute('cx', f3(ox + r * Math.cos(a))); s.tip.setAttribute('cy', f3(-(oy + r * Math.sin(a))));
     s.ray.setAttribute('visibility', 'visible'); s.tip.setAttribute('visibility', 'visible');
     const ro = $('#readout');
-    ro.innerHTML = `${EYE_NAME[e.eye]}　角度 <b>${(i * 360 / n).toFixed(1)}°</b>（${i + 1} 点目）　半径 <b>${r.toFixed(2)}</b> mm`;
+    ro.innerHTML = `${EYE_NAME[e.eye]}　角度 <b>${(i * 360 / n).toFixed(2)}°</b>（${i + 1} 点目）　半径 <b>${r.toFixed(2)}</b> mm`;
     ro.hidden = false;
   }
 
@@ -752,13 +752,12 @@ tabs.forEach((b, i) => {
       const m = svg.getScreenCTM();
       if (!m) return;
       const p = new DOMPoint(ev.clientX, ev.clientY).matrixTransform(m.inverse());
-      const a = Math.min(360, Math.max(0, ((p.x - L) / (W - L - R)) * 360));
+      // 書き出す点の角度に合わせる（1440 点なら 0.25° ごと）
+      const raw = Math.min(360, Math.max(0, ((p.x - L) / (W - L - R)) * 360));
+      const k = Math.round((raw / 360) * v.n), a = (k * 360) / v.n;
       cur.setAttribute('x1', X(a)); cur.setAttribute('x2', X(a)); cur.setAttribute('visibility', 'visible');
-      const parts = v.eyes.map(e => {
-        const n = e.radii.length, i = Math.round((a / 360) * n) % n;
-        return `${EYE_NAME[e.eye]} <b>${e.radii[i].toFixed(2)}</b>`;
-      });
-      $('#readout').innerHTML = `角度 <b>${a.toFixed(1)}°</b>　半径（mm）　${parts.join('　')}`;
+      const parts = v.eyes.map(e => `${EYE_NAME[e.eye]} <b>${e.radii[k % e.radii.length].toFixed(2)}</b>`);
+      $('#readout').innerHTML = `角度 <b>${a.toFixed(2)}°</b>（${(k % v.n) + 1} 点目）　半径（mm）　${parts.join('　')}`;
       $('#readout').hidden = false;
     });
     svg.addEventListener('pointerleave', () => { cur.setAttribute('visibility', 'hidden'); $('#readout').hidden = true; });

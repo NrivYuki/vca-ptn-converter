@@ -83,11 +83,12 @@ docs/job-ptn.md  メーカーごとの JOB・PTN の定義と出典
 
 | ファイル | 内容 |
 |---|---|
-| `frame-right.vca` / `frame-both.vca` / `frame-uneven.vca` | [vca-guide](https://github.com/NrivYuki/vca-guide) のサンプル（360 点・180 点）。画面の「サンプルを読み込む」は `frame-both.vca` を使う。半径の基準点が箱の中心から約 1.32 mm ずれているため、読み込むと警告が出る |
+| `_SAMPLE0001.vca` | 画面の「サンプル」で読み込むもの。両眼、1440 点（0.25° ごと）。鼻側と耳側の形が違うので、左右の向きを確かめやすい |
+| `frame-right.vca` / `frame-both.vca` / `frame-uneven.vca` | [vca-guide](https://github.com/NrivYuki/vca-guide) のサンプル（360 点・180 点） |
 
 ## ライセンス
 
-[MIT License](LICENSE)。`vca-parser.js`・`vca-records.js` とサンプルは [vca-guide](https://github.com/NrivYuki/vca-guide)（MIT License）のものです。
+[MIT License](LICENSE)。`vca-parser.js`・`vca-records.js` と `frame-*.vca` のサンプルは [vca-guide](https://github.com/NrivYuki/vca-guide)（MIT License）のものです。
 
 ## 免責
 
