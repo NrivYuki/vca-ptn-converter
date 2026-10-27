@@ -4,164 +4,363 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>vca-ptn Converter</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
 <style>
   :root {
-    --bg: #f6f7f9; --panel: #ffffff; --ink: #1d2330; --muted: #5d6676; --line: #d9dde4;
-    --accent: #1f6feb; --accent-ink: #ffffff; --warn-bg: #fff6df; --warn-ink: #6b4b00;
-    --err-bg: #fde8e8; --err-ink: #8a1c1c; --note-bg: #eef3fb; --shape: #1d2330; --shape-fill: rgba(31,111,235,.08);
-    --guide: #9aa3b2;
+    --bg: #ffffff; --panel: #ffffff; --band: #f2f3f4; --ink: #1a1a1a; --ink-2: #3a3f44; --muted: #555b61;
+    --line: #c8ccd0; --line-light: #dde0e3;
+    --accent: #1f3a5f; --accent-ink: #ffffff; --link-hover: #0e1f36;
+    --warn-bg: #fff6df; --warn-ink: #5c4300; --err-bg: #fde8e8; --err-ink: #7a1a1a;
+    --stage: #e4e7ea;
+    --bar: #3b3f45; --bar-2: #2a2d32; --bar-ink: #ffffff; --bar-muted: #c9cdd2; --tab: #e6e8ea;
+    --side-w: 370px;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --bg: #12151b; --panel: #1b2029; --ink: #e6e9ef; --muted: #9aa3b2; --line: #2e3542;
-      --accent: #4c8dff; --accent-ink: #0b0e13; --warn-bg: #3a2f12; --warn-ink: #f3d68a;
-      --err-bg: #3d1d1d; --err-ink: #f4b4b4; --note-bg: #1c2638; --shape: #e6e9ef; --shape-fill: rgba(76,141,255,.12);
-      --guide: #5d6676;
+      --bg: #14171c; --panel: #14171c; --band: #1d2127; --ink: #e6e8eb; --ink-2: #c4c9cf; --muted: #9aa1a9;
+      --line: #3a4048; --line-light: #2c3138;
+      --accent: #8fb0d6; --accent-ink: #0e1520; --link-hover: #b9cfe8;
+      --warn-bg: #352b10; --warn-ink: #f0d58f; --err-bg: #3a1c1c; --err-ink: #f2b6b6;
+      --stage: #0f1215;
+      --bar: #22262c; --bar-2: #101215; --bar-ink: #e6e8eb; --bar-muted: #9aa1a9; --tab: #22262c;
     }
   }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.6 system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Yu Gothic UI", sans-serif; }
-  main { max-width: 1040px; margin: 0 auto; padding: 24px 16px 48px; }
-  h1 { font-size: 24px; margin: 0 0 4px; }
-  h2 { font-size: 16px; margin: 0 0 12px; }
-  .lead { color: var(--muted); margin: 0 0 16px; }
-  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
-  .note { background: var(--note-bg); border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; font-size: 14px; }
-  .note p { margin: 4px 0; }
-  .note a { white-space: nowrap; }
-  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
-  #drop { border: 2px dashed var(--line); border-radius: 10px; padding: 24px 16px; text-align: center; cursor: pointer; }
-  #drop.over { border-color: var(--accent); }
-  #drop small { color: var(--muted); display: block; margin-top: 4px; }
-  button, .btn { font: inherit; border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 8px; padding: 6px 12px; cursor: pointer; }
-  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
-  button:disabled { opacity: .45; cursor: not-allowed; }
-  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
-  label.f { display: grid; grid-template-columns: 9.5em 1fr; gap: 8px; align-items: center; margin: 6px 0; font-size: 14px; }
-  label.f span.h { color: var(--muted); font-size: 12px; grid-column: 2; margin-top: -4px; }
-  input[type=text], input[type=number], select { font: inherit; width: 100%; padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--ink); }
-  fieldset { border: 1px solid var(--line); border-radius: 8px; margin: 0 0 12px; padding: 8px 12px; }
-  legend { font-size: 13px; color: var(--muted); padding: 0 4px; }
-  #preview { background: var(--bg); border-radius: 8px; min-height: 180px; display: flex; align-items: center; justify-content: center; }
-  #preview svg { width: 100%; height: auto; max-height: 360px; }
-  #preview .outline { fill: var(--shape-fill); stroke: var(--shape); stroke-width: .25; }
-  #preview .box { fill: none; stroke: var(--guide); stroke-width: .12; stroke-dasharray: .8 .6; }
-  #preview .axis { stroke: var(--guide); stroke-width: .12; }
-  #preview .label { fill: var(--muted); font-size: 2.4px; text-anchor: middle; }
-  table { border-collapse: collapse; width: 100%; font-size: 14px; font-variant-numeric: tabular-nums; }
-  th, td { text-align: right; padding: 4px 8px; border-bottom: 1px solid var(--line); }
-  th:first-child, td:first-child { text-align: left; }
-  th { color: var(--muted); font-weight: 600; }
-  .msgs { margin: 8px 0 0; padding: 0; list-style: none; font-size: 13px; }
-  .msgs li { padding: 6px 10px; border-radius: 6px; margin-top: 4px; }
-  .msgs li.w { background: var(--warn-bg); color: var(--warn-ink); }
-  .msgs li.e { background: var(--err-bg); color: var(--err-ink); }
-  .msgs li.i { background: var(--note-bg); }
-  .out { display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; align-items: center; }
-  .out code { font-size: 13px; word-break: break-all; color: var(--muted); }
-  .muted { color: var(--muted); font-size: 13px; }
-  footer { color: var(--muted); font-size: 12px; margin-top: 24px; }
+  * { box-sizing: border-box; border-radius: 0; }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; }
+  body { margin: 0; display: flex; flex-direction: column; background: var(--bg); color: var(--ink); font: 14px/1.7 "Noto Sans JP", system-ui, "Hiragino Sans", "Yu Gothic UI", sans-serif; }
+  .mono, input[type=number], textarea, code { font-family: "IBM Plex Mono", ui-monospace, Consolas, monospace; }
   a { color: var(--accent); }
+  a:hover { color: var(--link-hover); }
+
+  /* 上の帯：左に名前、右にいま表示している条件 */
+  header.top { display: flex; align-items: stretch; background: var(--bar); color: var(--bar-ink); border-bottom: 1px solid var(--bar-2); }
+  header.top h1 { flex: none; width: var(--side-w); margin: 0; padding: 8px 16px; font-size: 15px; letter-spacing: 0.04em; background: var(--bar-2); }
+  header.top .spec { flex: 1; min-width: 0; padding: 8px 16px; font-size: 13px; color: var(--bar-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; align-self: center; }
+
+  .app { flex: 1; display: grid; grid-template-columns: var(--side-w) 1fr; min-height: 520px; }
+
+  /* 左：設定のタブ。選んだタブだけ下の面とつながる */
+  aside.side { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--line); background: var(--bg); }
+  .tabs { display: flex; flex: none; padding: 8px 8px 0; background: var(--band); border-bottom: 1px solid var(--line); }
+  .tabs button { flex: 1; padding: 6px 0; margin-right: -1px; margin-bottom: -1px; font-size: 13px; color: var(--ink-2); background: var(--tab); border: 1px solid var(--line); }
+  .tabs button:hover { color: var(--ink); border-color: var(--line); background: var(--bg); }
+  .tabs button[aria-selected=true] { color: var(--ink); font-weight: 700; background: var(--bg); border-top: 3px solid var(--accent); border-bottom-color: var(--bg); padding-top: 4px; }
+  .alerts { flex: none; padding: 0 16px; max-height: 30vh; overflow: auto; }
+  .alerts .msgs { margin-bottom: 8px; }
+  .panes { flex: 1; min-height: 0; overflow: auto; padding: 14px 16px 32px; }
+  .panel { margin-bottom: 24px; }
+  h2 { font-size: 15px; margin: 0 0 8px; padding-bottom: 4px; border-bottom: 2px solid var(--ink); }
+  h3 { font-size: 13px; margin: 14px 0 4px; color: var(--muted); }
+  .muted { color: var(--muted); font-size: 12px; }
+  .panel p.muted { margin: 6px 0 0; }
+
+  /* 入力 */
+  button, select, input, textarea { font: inherit; }
+  button { border: 1px solid var(--line); background: var(--panel); color: var(--ink); padding: 4px 10px; cursor: pointer; white-space: nowrap; }
+  button:hover:not(:disabled) { border-color: var(--ink); }
+  button:disabled { color: var(--muted); cursor: not-allowed; opacity: .55; }
+  button.on { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  input[type=number], input[type=text], select { width: 100%; padding: 3px 6px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+  input[type=number] { text-align: right; font-size: 13px; }
+  textarea { width: 100%; min-height: 92px; font-size: 12px; line-height: 1.4; background: var(--band); color: var(--ink); border: 1px solid var(--line); padding: 6px; resize: vertical; }
+  .f { display: grid; grid-template-columns: 8.5em 1fr; gap: 6px; align-items: center; margin: 5px 0; }
+  .f > span { color: var(--muted); font-size: 13px; }
+  .f > .h { grid-column: 2; color: var(--muted); font-size: 12px; line-height: 1.5; margin-top: -2px; }
+  fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+  fieldset:disabled { opacity: .55; }
+  .row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  #drop { border: 1px dashed var(--muted); padding: 10px; text-align: center; cursor: pointer; font-size: 13px; }
+  #drop:hover, #drop:focus { border-color: var(--ink); outline: none; }
+  body.dragging #drop { border: 2px solid var(--accent); color: var(--accent); }
+  details { margin-top: 8px; font-size: 13px; }
+  summary { cursor: pointer; color: var(--ink-2); }
+  #srcinfo { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; }
+
+  /* 表 */
+  table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; font-size: 13px; }
+  th, td { padding: 3px 4px; text-align: right; }
+  th:first-child, td:first-child { text-align: left; }
+  thead th { color: var(--muted); font-weight: 500; font-size: 12px; background: var(--band); border-bottom: 1px solid var(--line); }
+  tbody td { border-bottom: 1px solid var(--line-light); }
+  tbody td:first-child { color: var(--muted); }
+  td small { color: var(--muted); font-size: 11px; }
+  .outlist td { text-align: left; }
+  .outlist td:first-child { width: 4.5em; }
+  .outlist code { font-size: 12px; word-break: break-all; color: var(--ink); }
+
+  /* 知らせ：注意は色付きの地、エラーは太い枠、補足は枠だけ */
+  .msgs { list-style: none; padding: 0; margin: 6px 0 0; font-size: 12px; }
+  .msgs li { padding: 4px 8px; margin-top: 4px; border: 1px solid var(--line); }
+  .msgs li.w { background: var(--warn-bg); color: var(--warn-ink); border-color: currentColor; }
+  .msgs li.e { background: var(--err-bg); color: var(--err-ink); border: 2px solid currentColor; }
+  .msgs li.i { color: var(--ink-2); }
+  .note { margin-top: 16px; background: var(--band); border: 1px solid var(--line); padding: 8px 10px; font-size: 12px; color: var(--ink-2); }
+  .note p { margin: 3px 0; }
+
+  /* 右：ツールバー・表示の面・下の帯 */
+  .stage { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+  .toolbar { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; padding: 8px 10px; border-bottom: 1px solid var(--line); background: var(--band); }
+  .toolbar .sep { width: 1px; height: 22px; background: var(--line); margin: 0 4px; }
+  .toolbar label { display: inline-flex; gap: 4px; align-items: center; color: var(--ink-2); font-size: 13px; }
+  .seg { display: inline-flex; }
+  .seg button { margin-left: -1px; }
+  .seg button:first-child { margin-left: 0; }
+  .view { position: relative; flex: 1; min-height: 0; background: var(--stage); }
+  .view svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  #shapeSvg { cursor: crosshair; touch-action: none; }
+  .hud { position: absolute; font-size: 12px; background: var(--panel); border: 1px solid var(--line); padding: 6px 9px; pointer-events: none; }
+  .hud.tl { left: 10px; top: 10px; }
+  .hud.bl { left: 10px; bottom: 10px; font-variant-numeric: tabular-nums; }
+  .hud.bl b { font: 500 13px "IBM Plex Mono", ui-monospace, Consolas, monospace; }
+  .placeholder { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 12px; }
+  svg .outline { fill: var(--panel); stroke: var(--ink); }
+  svg .resampled { fill: none; stroke: var(--accent); stroke-dasharray: 1.2 .8; }
+  svg .box { fill: none; stroke: var(--muted); stroke-dasharray: .8 .6; }
+  svg .axis { stroke: var(--muted); }
+  svg .ray { stroke: var(--accent); }
+  svg .dot { fill: var(--accent); }
+  svg .lbl { fill: var(--muted); font-family: "Noto Sans JP", system-ui, sans-serif; }
+  svg .gline { stroke: var(--line); }
+  svg .curveR { fill: none; stroke: var(--accent); }
+  svg .curveL { fill: none; stroke: var(--ink); stroke-dasharray: 6 4; }
+  svg .cursor { stroke: var(--muted); stroke-dasharray: 3 3; }
+  svg .gbg { fill: var(--panel); stroke: var(--line); }
+  svg .hole { fill: var(--stage); stroke: var(--ink); }
+  /* 図面の表示：輪郭の役割ごとの線 */
+  svg .c { fill: transparent; cursor: pointer; }
+  svg .c.R, svg .c.L { stroke: var(--accent); }
+  svg .c.hole { stroke: var(--ink); }
+  svg .c.none { stroke: var(--muted); }
+  svg .c:hover, svg .c.sel { stroke: var(--warn-ink); }
+  svg .cno { fill: var(--ink); font-family: "IBM Plex Mono", ui-monospace, Consolas, monospace; pointer-events: none; }
+  /* 輪郭の割り当ての表 */
+  .contours td { text-align: left; vertical-align: middle; }
+  .contours td:first-child { width: 2.4em; text-align: right; font-family: "IBM Plex Mono", ui-monospace, Consolas, monospace; }
+  .contours td.src { font-size: 12px; color: var(--muted); word-break: break-all; }
+  .contours td.size { white-space: nowrap; font-family: "IBM Plex Mono", ui-monospace, Consolas, monospace; font-size: 12px; }
+  .contours select { width: 6.5em; padding: 1px 4px; }
+  .contours tr.sel td { background: var(--warn-bg); }
+  .bottombar { display: flex; flex: none; align-items: stretch; border-top: 1px solid var(--line); background: var(--bg); }
+  .bottombar .sum { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 2px 20px; padding: 6px 14px; font-size: 13px; color: var(--ink-2); }
+  .bottombar .sum b { font: 500 14px "IBM Plex Mono", ui-monospace, Consolas, monospace; color: var(--ink); }
+  .bottombar .sum .unit { color: var(--muted); font-size: 12px; }
+  .bottombar .actions { display: flex; flex: none; }
+  .bottombar .actions button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; width: 64px; padding: 6px 0; font-size: 11px; color: var(--ink-2); background: var(--bg); border: 0; border-left: 1px solid var(--line); }
+  .bottombar .actions button:hover:not(:disabled) { color: var(--ink); background: var(--band); }
+  .bottombar .actions svg { fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }
+
+  /* 狭い画面：表示の面を上、設定を下に積む */
+  @media (max-width: 900px) {
+    body { display: block; }
+    .app { grid-template-columns: 1fr; }
+    .stage { order: -1; }
+    .view { flex: none; height: 60vh; min-height: 300px; }
+    aside.side { border-right: 0; }
+    .panes { overflow: visible; }
+    .alerts { max-height: none; }
+    header.top { flex-wrap: wrap; }
+    header.top h1 { width: 100%; }
+    header.top .spec { white-space: normal; }
+    .bottombar { flex-wrap: wrap; }
+    .bottombar .actions { flex: 1 1 100%; border-top: 1px solid var(--line); }
+    .bottombar .actions button { flex: 1; width: auto; }
+    .bottombar .actions button:first-child { border-left: 0; }
+  }
 </style>
 </head>
 <body>
-<main>
+<header class="top">
   <h1>vca-ptn Converter</h1>
-  <p class="lead">VCA（OMA / DCS）・JOB・PTN・SVG・DXF の間で、眼鏡の玉形（レンズの外形）を変換します。ファイルはブラウザの中だけで処理し、どこにも送信しません。</p>
-
-  <div class="note">
-    <p><strong>このツールの前提</strong></p>
-    <p>JOB・PTN ファイルの扱いは、<a href="https://www.optiboard.com/" target="_blank" rel="noopener">OptiBoard</a>（眼鏡業界の英語フォーラム）の OMA 関連スレッドと、公開されている各メーカーの取扱説明書から得た情報だけに基づいています。実機が書き出したファイルの中身は確認していません。</p>
-    <p>扱えるのは、中身が VCA のテキストになっている .job / .ptn だけです。機器が独自の形式で書き出したファイルは読み込めません。書き出した .job / .ptn は「VCA のテキストを Nidek 機用の名前と拡張子にしたもの」で、読み込めるかどうかは機種や設定によります。詳しくは <a href="https://github.com/NrivYuki/vca-ptn-converter/blob/main/docs/job-ptn.md" target="_blank" rel="noopener">JOB・PTN の調査資料</a>を見てください。</p>
-  </div>
-
-  <section class="panel">
-    <h2>1. ファイルを選ぶ</h2>
-    <div id="drop" tabindex="0" role="button" aria-label="ファイルを選ぶ">
-      ここにファイルをドロップ、またはクリックして選ぶ
-      <small>.oma .vca .dcs .job .ptn .txt .svg .dxf</small>
+  <div class="spec" id="spec">玉形を読み込んでください</div>
+</header>
+<div class="app">
+  <aside class="side">
+    <div class="tabs" role="tablist" aria-label="設定">
+      <button role="tab" id="tab-load" data-pane="load" aria-controls="pane-load" aria-selected="true">読み込み</button>
+      <button role="tab" id="tab-opt" data-pane="opt" aria-controls="pane-opt" aria-selected="false" tabindex="-1">設定</button>
+      <button role="tab" id="tab-res" data-pane="res" aria-controls="pane-res" aria-selected="false" tabindex="-1">結果</button>
+      <button role="tab" id="tab-out" data-pane="out" aria-controls="pane-out" aria-selected="false" tabindex="-1">書き出し</button>
     </div>
-    <input id="file" type="file" accept=".oma,.vca,.dcs,.job,.ptn,.txt,.svg,.dxf" hidden>
-    <div class="row">
-      <button id="sample" type="button">サンプルを読み込む</button>
-      <span id="srcinfo" class="muted"></span>
+    <!-- 知らせは、どのタブを開いていても見える位置に置く -->
+    <div class="alerts" aria-live="polite">
+      <ul class="msgs" id="loadmsgs"></ul>
+      <ul class="msgs" id="outmsgs"></ul>
     </div>
-    <ul id="loadmsgs" class="msgs"></ul>
+    <div class="panes">
+      <div class="panel" role="tabpanel" id="pane-load" aria-labelledby="tab-load">
+        <h2>読み込み</h2>
+        <div id="drop" tabindex="0" role="button">ファイルをここに置くか、クリックして選ぶ<br><span class="muted">.oma .vca .dcs .job .ptn .txt .svg .dxf</span></div>
+        <input id="file" type="file" accept=".oma,.vca,.dcs,.job,.ptn,.txt,.svg,.dxf" hidden>
+        <div class="row" style="margin-top:6px">
+          <button id="sample" type="button">サンプル</button>
+          <span class="muted" id="srcinfo">未選択</span>
+        </div>
+        <details id="pasteBox">
+          <summary>テキストを貼り付け／中身を見る</summary>
+          <textarea id="pasteText" rows="8" spellcheck="false" placeholder="VCA・SVG・DXF のテキストを貼り付けます"></textarea>
+          <button id="pasteApply" type="button">このテキストを読み込む</button>
+        </details>
+
+        <h3>SVG・DXF の読み込み</h3>
+        <fieldset id="importset">
+          <label class="f"><span>1 単位 = ? mm</span><input id="scale" type="number" step="any" min="0" placeholder="自動">
+            <span class="h">図面の座標の 1 目盛りが何 mm か。空欄ならファイルから読み取ります（例：インチの図面は 25.4、96 dpi の px は 0.2646）</span><span class="h" id="scalehint"></span></label>
+          <label class="f"><span>輪郭が 1 つのとき</span><select id="singleEye"><option value="R">右眼（R）とみなす</option><option value="L">左眼（L）とみなす</option></select></label>
+          <label class="f"><span>線の意味</span><select id="lineKind">
+              <option value="groove">フレームの溝の底</option>
+              <option value="inner">フレームの内側の線</option>
+              <option value="pattern">型板の外形</option>
+              <option value="demo">デモレンズの外形</option>
+            </select>
+            <span class="h">溝の底・型板・デモレンズは線をそのまま使います。フレームの内側の見える線は、溝の深さだけ外へ広げます。VCA の TRCFMT の対象は、フレームなら F、型板なら P、デモレンズなら D にします</span></label>
+          <label class="f" id="depthRow"><span>溝の深さ（mm）</span><input id="grooveDepth" type="number" step="0.05" min="0" value="0.5">
+            <span class="h">見える線から溝の底までの距離。フレームによって違うので、実物に合わせてください</span></label>
+        </fieldset>
+
+        <div id="contourBox" hidden>
+          <h3>輪郭の割り当て</h3>
+          <table class="contours" id="contours"><tbody></tbody></table>
+          <div class="row" style="margin-top:6px">
+            <button id="rolesReset" type="button">自動の割り当てに戻す</button>
+          </div>
+          <p class="muted">閉じた輪郭を大きい順に並べています。右眼・左眼・穴・使わない、を選びます。「図面」の表示では、輪郭をクリックするたびにこの順に切り替わります。穴は、中心を含む玉形の眼の箱中心からの位置で DRILLE（基準 C）に書きます。丸穴か長穴に当てはめます。</p>
+        </div>
+
+        <div class="note">
+          <p><strong>このツールの前提</strong></p>
+          <p>JOB・PTN ファイルの扱いは、<a href="https://www.optiboard.com/" target="_blank" rel="noopener">OptiBoard</a>（眼鏡業界の英語フォーラム）の OMA 関連スレッドと、公開されている各メーカーの取扱説明書から得た情報だけに基づいています。実機が書き出したファイルの中身は確認していません。</p>
+          <p>扱えるのは、中身が VCA のテキストになっている .job / .ptn だけです。機器が独自の形式で書き出したファイルは読み込めません。書き出した .job / .ptn は「VCA のテキストを Nidek 機用の名前と拡張子にしたもの」で、読み込めるかどうかは機種や設定によります。詳しくは <a href="https://github.com/NrivYuki/vca-ptn-converter/blob/main/docs/job-ptn.md" target="_blank" rel="noopener">JOB・PTN の調査資料</a>を見てください。</p>
+          <p>ファイルはブラウザの中だけで処理し、どこにも送信しません。</p>
+        </div>
+      </div>
+
+      <div class="panel" role="tabpanel" id="pane-opt" aria-labelledby="tab-opt" hidden>
+        <h2>設定</h2>
+        <label class="f"><span>反対の眼</span><select id="fill"><option value="1">片眼だけなら、左右反転して作る</option><option value="0">作らない</option></select></label>
+        <label class="f"><span>DBL（mm）</span><input id="dbl" type="number" step="0.01" min="0"><span class="h" id="dblhint"></span></label>
+        <label class="f"><span>JOB 番号</span><input id="job" type="text" maxlength="12"><span class="h">VCA の JOB は 12 文字まで（規格）。空欄ならファイルの JOB かファイル名を使います</span></label>
+        <label class="f"><span>VCA の点数</span><select id="npts"><option value="auto">自動</option><option>360</option><option>400</option><option>500</option><option>512</option><option>800</option><option>1000</option><option>1200</option><option>1440</option></select><span class="h" id="nhint"></span></label>
+
+        <h3>JOB・PTN（Nidek 機の USB メモリ用）</h3>
+        <label class="f"><span>銘柄名</span><input id="brand" type="text" maxlength="12" placeholder="省略可。例：S1" autocapitalize="characters">
+          <span class="h">半角英数字で、英字を 1 文字以上含む 12 文字まで（ハイフンは使えません）。英字は大文字にします（取扱説明書で、コードの英字は大文字だけとされているため）</span></label>
+        <label class="f"><span>番号</span><input id="number" type="text" inputmode="numeric" placeholder="例：152152">
+          <span class="h">名前は 16 桁にそろえます（足りない桁は番号の先頭を 0 で埋めます）</span></label>
+        <label class="f"><span>拡張子</span><select id="extcase"><option value="lower">小文字（.ptn / .job）</option><option value="upper">大文字（.PTN / .JOB）</option></select>
+          <span class="h">USB メモリ（FAT32）は大文字と小文字を区別しないので、通常はどちらでも同じです</span></label>
+        <label class="f"><span>中身</span><select id="keep"><option value="1">元の VCA をそのまま使う</option><option value="0">このツールで VCA を作り直す</option></select>
+          <span class="h">元が VCA のときだけ選べます</span></label>
+      </div>
+
+      <div class="panel" role="tabpanel" id="pane-res" aria-labelledby="tab-res" hidden>
+        <h2>結果</h2>
+        <table id="stats">
+          <thead><tr><th></th><th>右眼 R</th><th>左眼 L</th></tr></thead>
+          <tbody><tr><td>—</td><td>—</td><td>—</td></tr></tbody>
+        </table>
+        <p class="muted">単位は mm。かっこ内はファイルに書かれていた値です。FED は箱の中心から最も遠い縁までの距離の 2 倍、基準点のずれは VCA の半径の基準点と箱の中心の距離です。</p>
+        <p class="muted">角度は、正面から見て右（3 時の方向）を 0° とし、反時計回りに数えます。</p>
+      </div>
+
+      <div class="panel" role="tabpanel" id="pane-out" aria-labelledby="tab-out" hidden>
+        <h2>書き出し</h2>
+        <table class="outlist">
+          <tbody>
+            <tr><td>SVG</td><td><code id="n-svg">—</code></td></tr>
+            <tr><td>DXF</td><td><code id="n-dxf">—</code></td></tr>
+            <tr><td>VCA</td><td><code id="n-vca">—</code></td></tr>
+            <tr><td>PTN</td><td><code id="n-ptn">—</code></td></tr>
+            <tr><td>JOB</td><td><code id="n-job">—</code></td></tr>
+          </tbody>
+        </table>
+        <p class="muted">画面下のボタンで保存できます。PTN は USB メモリの銘柄名などのフォルダに、JOB は <code>JOB_DATA</code> フォルダに置く、と報告されています（OptiBoard）。PTN と JOB の中身は同じで、名前と拡張子だけが違います。</p>
+        <h3 id="outTextTitle">書き出す VCA の中身</h3>
+        <textarea id="outText" readonly rows="10" spellcheck="false"></textarea>
+        <div class="note">
+          <p>個人が作成した非公式のツールで、The Vision Council や各機器メーカーとは関係ありません。変換結果の正確さは保証しません。実機で加工する前に、必ず形と寸法を確認してください。VCA の読み込みには vca-parser.js（<a href="https://github.com/NrivYuki/vca-guide" target="_blank" rel="noopener">vca-guide</a>、MIT License）を使っています。</p>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <section class="stage">
+    <div class="toolbar">
+      <div class="seg" role="group" aria-label="表示">
+        <button id="viewShape" class="on" type="button" aria-pressed="true">玉形</button><button id="viewGraph" type="button" aria-pressed="false">角度ごとの半径</button><button id="viewDraw" type="button" aria-pressed="false" disabled title="SVG・DXF を読み込んだときに使えます">図面</button>
+      </div>
+      <span class="sep"></span>
+      <label><input type="checkbox" id="showRes" checked>書き出す形を重ねる</label>
+      <label><input type="checkbox" id="showGuide" checked>箱と中心</label>
+    </div>
+    <div class="view" id="view">
+      <div class="placeholder" id="placeholder">ファイルを読み込むと、ここに玉形が表示されます</div>
+      <div class="hud tl" id="hint">正面から見た向き（右眼を左側に表示）。図の上にマウスを置くと、その角度の半径を表示します</div>
+      <div class="hud bl" id="readout" hidden></div>
+    </div>
+    <div class="bottombar">
+      <div class="sum" id="sum"><span>玉形を読み込むと、ここに寸法が出ます</span></div>
+      <div class="actions">
+        <button data-out="svg" disabled title="SVG で保存"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 4v11 M7 10l5 5 5-5 M5 20h14"/></svg><span>SVG</span></button>
+        <button data-out="dxf" disabled title="DXF で保存"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 4v11 M7 10l5 5 5-5 M5 20h14"/></svg><span>DXF</span></button>
+        <button data-out="vca" disabled title="VCA（.oma）で保存"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 4v11 M7 10l5 5 5-5 M5 20h14"/></svg><span>VCA</span></button>
+        <button data-out="ptn" disabled title="PTN で保存"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M5 6h5l2 2h7v11H5z M12 11v5 M9.5 13.5L12 16l2.5-2.5"/></svg><span>PTN</span></button>
+        <button data-out="job" disabled title="JOB で保存"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M5 6h5l2 2h7v11H5z M12 11v5 M9.5 13.5L12 16l2.5-2.5"/></svg><span>JOB</span></button>
+      </div>
+    </div>
   </section>
+</div>
 
-  <div class="grid">
-    <section class="panel">
-      <h2>2. 確認する</h2>
-      <div id="preview"><span class="muted">ファイルを選ぶと、ここに形が表示されます</span></div>
-      <table id="stats" hidden>
-        <thead><tr><th>眼</th><th>点数</th><th>HBOX</th><th>VBOX</th><th>周長</th></tr></thead>
-        <tbody></tbody>
-      </table>
-      <p class="muted" id="statsnote" hidden>単位は mm。かっこ内はファイルに書かれていた値です。正面から見た向きで、右眼を左側に表示しています。</p>
-    </section>
-
-    <section class="panel">
-      <h2>3. 設定する</h2>
-      <fieldset id="importset">
-        <legend>SVG・DXF の読み込み</legend>
-        <label class="f">1 単位 = ? mm<input id="scale" type="number" step="any" min="0" placeholder="自動"><span class="h">図面の座標の 1 目盛りが何 mm か。空欄ならファイルから読み取ります（例：インチの図面は 25.4、96 dpi の px は 0.2646）</span><span class="h" id="scalehint"></span></label>
-        <label class="f">輪郭が 1 つのとき<select id="singleEye"><option value="R">右眼（R）とみなす</option><option value="L">左眼（L）とみなす</option></select></label>
-      </fieldset>
-      <fieldset>
-        <legend>共通</legend>
-        <label class="f">反対の眼<select id="fill"><option value="1">片眼だけなら、左右反転して作る</option><option value="0">作らない</option></select></label>
-        <label class="f">DBL（鼻幅、mm）<input id="dbl" type="number" step="0.01" min="0"><span class="h" id="dblhint"></span></label>
-        <label class="f">JOB 番号<input id="job" type="text" maxlength="40"></label>
-        <label class="f">VCA の点数<select id="npts"><option value="auto">自動</option><option>360</option><option>400</option><option>500</option><option>512</option><option>800</option><option>1000</option><option>1200</option><option>1440</option></select><span class="h" id="nhint"></span></label>
-      </fieldset>
-      <fieldset>
-        <legend>JOB・PTN（Nidek 機の USB メモリ用）</legend>
-        <label class="f">銘柄名（省略可）<input id="brand" type="text" maxlength="12" placeholder="例：S1" autocapitalize="characters"><span class="h">半角英数字で、英字を 1 文字以上含む 12 文字まで（ハイフンは使えません）。英字は大文字にします（取扱説明書で、コードの英字は大文字だけとされているため）</span></label>
-        <label class="f">番号<input id="number" type="text" inputmode="numeric" placeholder="例：152152"><span class="h">名前は 16 桁にそろえます（足りない桁は番号の先頭を 0 で埋めます）</span></label>
-        <label class="f">拡張子<select id="extcase"><option value="lower">小文字（.ptn / .job）</option><option value="upper">大文字（.PTN / .JOB）</option></select><span class="h">USB メモリ（FAT32）は大文字と小文字を区別しないので、通常はどちらでも同じです</span></label>
-        <label class="f">中身<select id="keep"><option value="1">元の VCA をそのまま使う</option><option value="0">このツールで VCA を作り直す</option></select><span class="h">元が VCA のときだけ選べます</span></label>
-      </fieldset>
-    </section>
-  </div>
-
-  <section class="panel">
-    <h2>4. 書き出す</h2>
-    <div class="out" id="outs">
-      <code id="n-svg">—</code><button data-out="svg" disabled>SVG</button>
-      <code id="n-dxf">—</code><button data-out="dxf" disabled>DXF</button>
-      <code id="n-vca">—</code><button data-out="vca" disabled>VCA（.oma）</button>
-      <code id="n-ptn">—</code><button data-out="ptn" disabled>PTN</button>
-      <code id="n-job">—</code><button data-out="job" disabled>JOB</button>
-    </div>
-    <ul id="outmsgs" class="msgs"></ul>
-    <p class="muted">PTN は USB メモリの銘柄名などのフォルダに、JOB は <code>JOB_DATA</code> フォルダに置く、と報告されています（OptiBoard）。PTN と JOB の中身は同じで、名前と拡張子だけが違います。</p>
-  </section>
-
-  <footer>
-    vca-ptn Converter — The Vision Council や各機器メーカーとは関係のない、個人が作成した非公式のツールです。変換結果の正確さは保証しません。実機で加工する前に、必ず形と寸法を確認してください。VCA の読み込みには vca-parser.js（vca-guide、MIT License）を使っています。
-  </footer>
-</main>
-
+<script src="vca-records.js"></script>
 <script src="vca-parser.js"></script>
 <script src="converter.js"></script>
 <script src="sample-data.js"></script>
 <script>
+// 左の設定のタブ（左右の矢印キーでも切り替える）
+const tabs = [...document.querySelectorAll('.tabs [role=tab]')];
+function showPane(btn) {
+  for (const b of tabs) {
+    b.setAttribute('aria-selected', b === btn ? 'true' : 'false');
+    b.tabIndex = b === btn ? 0 : -1;
+    document.getElementById('pane-' + b.dataset.pane).hidden = b !== btn;
+  }
+  document.querySelector('.panes').scrollTop = 0;
+}
+tabs.forEach((b, i) => {
+  b.addEventListener('click', () => showPane(b));
+  b.addEventListener('keydown', e => {
+    const d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+    if (d) { const n = tabs[(i + d + tabs.length) % tabs.length]; showPane(n); n.focus(); }
+  });
+});
+
 (function () {
   'use strict';
   const $ = s => document.querySelector(s);
-  const state = { name: '', text: '', type: null, set: null, vca: null };
+  const SVGNS = 'http://www.w3.org/2000/svg';
+  const EYES = ['R', 'L'];
+  const EYE_NAME = { R: '右眼（R）', L: '左眼（L）' };
+  const state = { name: '', text: '', type: null, set: null, vca: null, view: null, mode: 'shape', roles: null, sel: -1 };
+  const ROLE_NAME = { R: '右眼', L: '左眼', hole: '穴', none: '使わない' };
+  const isCad = () => state.type === 'svg' || state.type === 'dxf';
 
   // ---- 読み込み ----
   function load(name, text) {
     state.name = name; state.text = text;
     state.type = Converter.detect(text, name);
+    state.roles = null; state.sel = -1;
     $('#scale').value = '';
     $('#dbl').value = '';
     $('#job').value = '';
     $('#number').value = '';
     $('#npts').value = 'auto';
+    // 読み込んだ中身を貼り付け欄に出す（バイナリや大きすぎるものは出さない）
+    const pt = $('#pasteText');
+    pt.value = Converter.binaryRatio(text) > 0.05 ? '' : text.slice(0, 300000);
+    pt.placeholder = pt.value ? '' : 'テキストとして表示できない中身です';
     rebuild();
+    // 図面に輪郭が 2 つ以上あるときは、割り当てを確かめられるよう図面の表示から始める
+    setMode(isCad() && state.set && state.set.contours && state.set.contours.length > 1 ? 'draw' : state.mode === 'draw' ? 'shape' : state.mode);
   }
 
   function readFile(file) {
@@ -173,16 +372,60 @@
   drop.addEventListener('click', () => input.click());
   drop.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); input.click(); } });
   input.addEventListener('change', () => { readFile(input.files[0]); input.value = ''; });
-  drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('over'); });
-  drop.addEventListener('dragleave', () => drop.classList.remove('over'));
-  drop.addEventListener('drop', e => { e.preventDefault(); drop.classList.remove('over'); readFile(e.dataTransfer.files[0]); });
   $('#sample').addEventListener('click', () => load('frame-both.vca', window.SAMPLE_VCA));
-  ['#scale', '#singleEye', '#fill', '#dbl', '#job', '#npts', '#brand', '#number', '#extcase', '#keep']
+  $('#pasteApply').addEventListener('click', () => {
+    const t = $('#pasteText').value;
+    if (t.trim()) load('貼り付けたテキスト', t);
+  });
+  // 画面のどこに置いても読み込む
+  let dragDepth = 0;
+  document.addEventListener('dragenter', e => { if (e.dataTransfer && [...e.dataTransfer.types].includes('Files')) { dragDepth++; document.body.classList.add('dragging'); } });
+  document.addEventListener('dragleave', () => { if (--dragDepth <= 0) { dragDepth = 0; document.body.classList.remove('dragging'); } });
+  document.addEventListener('dragover', e => e.preventDefault());
+  document.addEventListener('drop', e => {
+    e.preventDefault(); dragDepth = 0; document.body.classList.remove('dragging');
+    if (e.dataTransfer.files[0]) readFile(e.dataTransfer.files[0]);
+  });
+
+  ['#scale', '#fill', '#dbl', '#job', '#npts', '#brand', '#number', '#extcase', '#keep', '#lineKind', '#grooveDepth']
     .forEach(s => $(s).addEventListener('input', rebuild));
+  // 「輪郭が 1 つのとき」は自動の割り当てで使うので、変えたら割り当てを決め直す
+  $('#singleEye').addEventListener('input', () => { state.roles = null; rebuild(); });
+  $('#rolesReset').addEventListener('click', () => { state.roles = null; rebuild(); });
+
+  // 輪郭の役割を変える（表の選択と、図面のクリックから）
+  function setRole(i, role) {
+    if (!state.set || !state.set.roles) return;
+    state.roles = state.set.roles.slice();
+    state.roles[i] = role;
+    state.sel = i;
+    rebuild();
+  }
+  function cycleRole(i) {
+    const order = Converter.ROLES, cur = state.set.roles[i];
+    setRole(i, order[(order.indexOf(cur) + 1) % order.length]);
+  }
   $('#brand').addEventListener('input', e => {
     const el = e.target, pos = el.selectionStart, up = el.value.toUpperCase();
     if (el.value !== up) { el.value = up; el.setSelectionRange(pos, pos); }
   });
+
+  // 表示の切り替え
+  function setMode(m) {
+    if (m === 'draw' && !isCad()) m = 'shape';
+    state.mode = m;
+    for (const [id, k] of [['#viewShape', 'shape'], ['#viewGraph', 'graph'], ['#viewDraw', 'draw']]) {
+      $(id).classList.toggle('on', m === k); $(id).setAttribute('aria-pressed', m === k);
+    }
+    $('#showRes').disabled = $('#showGuide').disabled = m !== 'shape';
+    draw();
+  }
+  $('#viewShape').addEventListener('click', () => setMode('shape'));
+  $('#viewGraph').addEventListener('click', () => setMode('graph'));
+  $('#viewDraw').addEventListener('click', () => setMode('draw'));
+  ['#showRes', '#showGuide'].forEach(s => $(s).addEventListener('change', draw));
+  let resizeTimer = 0;
+  window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(draw, 150); });
 
   // ---- 変換 ----
   const TYPE_NAME = { vca: 'VCA テキスト', svg: 'SVG', dxf: 'DXF', unknown: '不明' };
@@ -190,10 +433,13 @@
   const stemOf = name => name.replace(/\.[^.]+$/, '') || 'shape';
 
   function importSet() {
-    const scale = num($('#scale').value), singleEye = $('#singleEye').value;
+    const opts = {
+      scale: num($('#scale').value), singleEye: $('#singleEye').value, roles: state.roles || undefined,
+      line: $('#lineKind').value, grooveDepth: num($('#grooveDepth').value),
+    };
     if (state.type === 'vca') return Converter.fromVCA(state.text);
-    if (state.type === 'svg') return Converter.fromSVG(state.text, { scale, singleEye });
-    if (state.type === 'dxf') return Converter.fromDXF(state.text, { scale, singleEye });
+    if (state.type === 'svg') return Converter.fromSVG(state.text, opts);
+    if (state.type === 'dxf') return Converter.fromDXF(state.text, opts);
     const ratio = Converter.binaryRatio(state.text);
     return { eyes: {}, warnings: [], errors: [ratio > 0.05
       ? 'VCA のテキストではありません。機器が独自の形式で書き出したファイルの可能性があります。このツールでは読み込めません（機器を VCA 出力に設定するか、メーカーの変換ソフトで VCA にしてください）'
@@ -212,8 +458,12 @@
 
     const isVca = state.type === 'vca';
     $('#srcinfo').textContent = `${state.name}（${TYPE_NAME[state.type]}）`;
-    $('#importset').disabled = !(state.type === 'svg' || state.type === 'dxf');
+    $('#srcinfo').title = $('#srcinfo').textContent;
+    $('#importset').disabled = !isCad();
+    $('#depthRow').hidden = $('#lineKind').value !== 'inner';
+    $('#viewDraw').disabled = !isCad();
     $('#keep').disabled = !isVca;
+    renderContours(set);
     $('#scalehint').textContent = set.unitScale ? `→ ${set.unitNote}（現在 1 単位 = ${+set.unitScale.toPrecision(6)} mm）` : '';
 
     // DBL・JOB・点数の既定値
@@ -223,58 +473,332 @@
       ? (isVca ? 'ファイルの DBL を使います' : '2 つの輪郭の間隔から求めました') : '不明なので、空欄なら 18 mm として並べます（VCA には書きません）';
     const job = $('#job').value.trim() || set.job || stemOf(state.name);
     $('#job').placeholder = set.job || stemOf(state.name);
-    let n = $('#npts').value === 'auto' ? autoPoints(set) : +$('#npts').value;
+    const n = $('#npts').value === 'auto' ? autoPoints(set) : +$('#npts').value;
     $('#nhint').textContent = $('#npts').value === 'auto' ? `${n} 点` : '';
     if (!$('#number').value) $('#number').placeholder = (String(job).match(/\d+/g) || ['1']).join('').slice(-16);
 
-    // メッセージ
+    // 知らせ
     const msgs = [];
     if (set.unitScale && state.type !== 'vca') msgs.push(['i', set.unitNote]);
     set.errors.forEach(m => msgs.push(['e', m]));
     set.warnings.forEach(m => msgs.push(['w', m]));
-    for (const e of ['R', 'L']) if (set.eyes[e] && set.eyes[e].mirrored) msgs.push(['i', `${e === 'R' ? '右眼' : '左眼'}は反対の眼を左右反転して作りました`]);
-    if (isVca && original.rec && (original.rec.DRILLE || original.rec.DRILL)) msgs.push(['w', '穴あけのデータは SVG・DXF には描きません']);
+    for (const e of EYES) if (set.eyes[e] && set.eyes[e].mirrored) msgs.push(['i', `${e === 'R' ? '右眼' : '左眼'}は反対の眼を左右反転して作りました`]);
     showMsgs('#loadmsgs', msgs);
 
-    // プレビューと寸法
-    renderPreview(set, dbl, job);
-    renderStats(set, original);
-
-    // VCA の書き出し内容（警告を先に見せるため、ここで作っておく）
+    // VCA の書き出し内容（注意を先に見せるため、ここで作っておく）
     state.vca = hasShape ? Converter.toVCA(set, { n, job, dbl: num($('#dbl').value) ?? set.dbl, keepRecords: isVca }) : null;
+
+    buildView(set, dbl, n);
+    renderSpec(set, dbl, n);
+    draw();
+    renderStats(set, original);
+    renderSum();
     renderOutputs(hasShape, job, dbl);
+  }
+
+  // 輪郭の割り当ての表（SVG・DXF のとき）
+  function renderContours(set) {
+    const box = $('#contourBox'), tb = $('#contours tbody');
+    const list = isCad() && set.contours ? set.contours : [];
+    box.hidden = !list.length;
+    tb.innerHTML = '';
+    list.forEach((c, i) => {
+      const tr = document.createElement('tr');
+      if (i === state.sel) tr.className = 'sel';
+      const role = set.roles[i];
+      const opts = Converter.ROLES.map(r => `<option value="${r}"${r === role ? ' selected' : ''}>${ROLE_NAME[r]}</option>`).join('');
+      tr.innerHTML = `<td>${i + 1}</td><td class="size">${c.b.w.toFixed(2)}×${c.b.h.toFixed(2)}</td><td class="src"></td><td><select aria-label="${i + 1} 番の役割">${opts}</select></td>`;
+      tr.querySelector('.src').textContent = (c.src && c.src.label) || '';
+      tr.querySelector('select').addEventListener('change', e => setRole(i, e.target.value));
+      tr.addEventListener('pointerenter', () => highlight(i, true));
+      tr.addEventListener('pointerleave', () => highlight(i, false));
+      tb.appendChild(tr);
+    });
+  }
+
+  // 図面の表示で、表の行に対応する輪郭を目立たせる
+  function highlight(i, on) {
+    const p = document.querySelector(`#drawSvg [data-i="${i}"]`);
+    if (p) p.classList.toggle('sel', on || i === state.sel);
   }
 
   // 元が等角度の VCA ならその点数、それ以外は 400 点
   function autoPoints(set) {
-    const ns = ['R', 'L'].map(e => set.eyes[e]).filter(o => o && o.n && o.mode === 'E').map(o => o.n);
+    const ns = EYES.map(e => set.eyes[e]).filter(o => o && o.n && o.mode === 'E').map(o => o.n);
     return ns.length ? Math.max(...ns) : 400;
   }
 
-  function renderPreview(set, dbl, job) {
-    const el = $('#preview');
-    if (!set.eyes.R && !set.eyes.L) { el.innerHTML = '<span class="muted">表示できる形がありません</span>'; return; }
-    el.innerHTML = Converter.toSVG(set, { dbl, title: job, preview: true }).replace(/^<\?xml[^>]*>\s*/, '');
+  // 上の帯：いま表示している条件
+  function renderSpec(set, dbl, n) {
+    const eyes = EYES.filter(e => set.eyes[e]);
+    const parts = [state.name, TYPE_NAME[state.type]];
+    if (eyes.length) {
+      parts.push(eyes.length === 2 ? '両眼' : (eyes[0] === 'R' ? '右眼だけ' : '左眼だけ'));
+      parts.push(`書き出し ${n} 点`);
+      parts.push(`DBL ${(Number.isFinite(dbl) ? dbl : 18).toFixed(2)} mm`);
+      const holes = set.holes ? eyes.reduce((s, e) => s + set.holes[e].length, 0) : 0;
+      if (holes) parts.push(`穴 ${holes}`);
+      if (set.object && set.object !== 'F') parts.push(set.object === 'P' ? '型板' : 'デモレンズ');
+    }
+    $('#spec').textContent = parts.join('／');
   }
 
-  function renderStats(set, original) {
-    const tb = $('#stats tbody'), rows = [];
-    const fileVal = (label, eye) => {
-      if (!original.rec) return '';
-      const v = VCA.sideNumber(original.rec[label], eye);
-      return v === undefined ? '' : `（${v.toFixed(2)}）`;
-    };
-    for (const e of ['R', 'L']) {
+  // ---- 表示用のデータ ----
+  function bboxOf(pts) {
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    for (const p of pts) { x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y); }
+    return { x0, x1, y0, y1, w: x1 - x0, h: y1 - y0, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2 };
+  }
+
+  /**
+   * 眼ごとに、表示する位置と形を決める。
+   * 箱の中心を各眼の中心に置き、両眼なら DBL の間隔で並べる（書き出す SVG・DXF と同じ並べ方）。
+   * 半径の基準点（VCA の原点）の位置も持っておき、読み取りと重ね表示に使う。
+   */
+  function buildView(set, dbl, n) {
+    const d = Number.isFinite(dbl) ? dbl : 18;
+    const eyes = [];
+    for (const e of EYES) {
       const o = set.eyes[e];
       if (!o) continue;
-      const m = Converter.measure(o.pts);
-      const pts = o.n ? `${o.n}（形式${o.fmt}・${o.mode}）` : (o.mirrored ? '反転' : o.pts.length);
-      rows.push(`<tr><td>${e === 'R' ? '右眼 R' : '左眼 L'}</td><td>${pts}</td><td>${m.hbox.toFixed(2)}${o.mirrored ? '' : fileVal('HBOX', e)}</td><td>${m.vbox.toFixed(2)}${o.mirrored ? '' : fileVal('VBOX', e)}</td><td>${m.circ.toFixed(2)}${o.mirrored ? '' : fileVal('CIRC', e)}</td></tr>`);
+      const b = bboxOf(o.pts);
+      const r = Converter.resample(o.pts, n);
+      const radii = r.radii.map(v => Math.round(v * 100) / 100);
+      const outline = o.pts.map(p => ({ x: p.x - b.cx, y: p.y - b.cy }));
+      eyes.push({
+        eye: e, b, radii, outline,
+        resampled: Converter.radiiToPoints(radii).map(p => ({ x: p.x - b.cx, y: p.y - b.cy })),
+        origin: { x: -b.cx, y: -b.cy },
+        fed: 2 * Math.max(...outline.map(p => Math.hypot(p.x, p.y))),
+        circ: Converter.measure(o.pts).circ,
+        offset: 0,
+        // 穴は箱中心基準なので、表示の座標（箱中心が原点）にそのまま置ける
+        holes: (set.holes && set.holes[e] || []).map(f => Converter.holeOutline(f)),
+      });
     }
-    tb.innerHTML = rows.join('');
-    $('#stats').hidden = $('#statsnote').hidden = !rows.length;
+    if (eyes.length === 2) {
+      eyes[0].offset = -(d + eyes[0].b.w) / 2;
+      eyes[1].offset = (d + eyes[1].b.w) / 2;
+    }
+    state.view = eyes.length ? { eyes, n } : null;
   }
 
+  function el(tag, attrs, parent) {
+    const node = document.createElementNS(SVGNS, tag);
+    for (const k in attrs) node.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(node);
+    return node;
+  }
+  const f3 = v => (Math.round(v * 1000) / 1000).toString();
+  const pathOf = (pts, dx) => 'M' + pts.map(p => `${f3(p.x + dx)} ${f3(-p.y)}`).join(' L') + ' Z';
+
+  function draw() {
+    const view = $('#view');
+    view.querySelectorAll('svg').forEach(s => s.remove());
+    $('#readout').hidden = true;
+    state.svg = state.graph = null;
+    const drawing = state.mode === 'draw' && state.set && state.set.contours && state.set.contours.length;
+    $('#placeholder').hidden = !!(state.view || drawing);
+    $('#placeholder').textContent = state.type ? '表示できる玉形がありません' : 'ファイルを読み込むと、ここに玉形が表示されます';
+    $('#hint').hidden = !(state.view || drawing);
+    if (drawing) {
+      $('#hint').textContent = '読み込んだ図面の閉じた輪郭（番号は左の「輪郭の割り当て」と同じ）。クリックするたびに 右眼→左眼→穴→使わない と切り替わります';
+      drawDrawing(view);
+      return;
+    }
+    if (!state.view) return;
+    if (state.mode === 'graph') {
+      $('#hint').textContent = '書き出す VCA の半径（mm）。0° は 3 時の方向、反時計回り。実線が右眼、破線が左眼';
+      drawGraph(view);
+    } else {
+      $('#hint').textContent = '正面から見た向き（右眼を左側に表示）。図の上にマウスを置くと、その角度の半径を表示します';
+      drawShape(view);
+    }
+  }
+
+  // ---- 玉形の表示 ----
+  function drawShape(view) {
+    const v = state.view;
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    for (const e of v.eyes) {
+      x0 = Math.min(x0, e.offset - e.b.w / 2); x1 = Math.max(x1, e.offset + e.b.w / 2);
+      y0 = Math.min(y0, -e.b.h / 2); y1 = Math.max(y1, e.b.h / 2);
+    }
+    const mg = 12, vw = x1 - x0 + mg * 2, vh = y1 - y0 + mg * 2;
+    const scale = Math.min(view.clientWidth / vw, view.clientHeight / vh) || 4;   // 1 mm が何 px か
+    const px = v => v / scale;                                                       // 画面上の px を mm に直す
+    const svg = el('svg', { id: 'shapeSvg', viewBox: `${f3(x0 - mg)} ${f3(-y1 - mg)} ${f3(vw)} ${f3(vh)}`, preserveAspectRatio: 'xMidYMid meet', role: 'img', 'aria-label': '玉形' });
+    const showRes = $('#showRes').checked, showGuide = $('#showGuide').checked;
+    for (const e of v.eyes) {
+      const g = el('g', {}, svg);
+      if (showGuide) {
+        el('rect', { class: 'box', x: f3(e.offset - e.b.w / 2), y: f3(-e.b.h / 2), width: f3(e.b.w), height: f3(e.b.h), 'stroke-width': px(1) }, g);
+      }
+      el('path', { class: 'outline', d: pathOf(e.outline, e.offset), 'stroke-width': px(1.6) }, g);
+      for (const h of e.holes) el('path', { class: 'hole', d: pathOf(h, e.offset), 'stroke-width': px(1.2) }, g);
+      if (showRes) el('path', { class: 'resampled', d: pathOf(e.resampled, e.offset), 'stroke-width': px(1.4), 'stroke-dasharray': `${px(6)} ${px(4)}` }, g);
+      if (showGuide) {
+        const s = px(8);
+        el('path', { class: 'axis', d: `M${f3(e.offset - s)} 0 H${f3(e.offset + s)} M${f3(e.offset)} ${f3(-s)} V${f3(s)}`, 'stroke-width': px(1) }, g);
+        if (Math.hypot(e.origin.x, e.origin.y) > 0.05) el('circle', { class: 'dot', cx: f3(e.offset + e.origin.x), cy: f3(-e.origin.y), r: px(3) }, g);
+        const t = el('text', { class: 'lbl', x: f3(e.offset), y: f3(e.b.h / 2 + px(18)), 'text-anchor': 'middle', 'font-size': px(12) }, g);
+        t.textContent = EYE_NAME[e.eye];
+      }
+    }
+    const ray = el('line', { class: 'ray', 'stroke-width': px(1.4), visibility: 'hidden' }, svg);
+    const tip = el('circle', { class: 'dot', r: px(3.5), visibility: 'hidden' }, svg);
+    view.insertBefore(svg, view.firstChild);
+    state.svg = { svg, ray, tip };
+    svg.addEventListener('pointermove', onHover);
+    svg.addEventListener('pointerdown', onHover);
+    svg.addEventListener('pointerleave', clearHover);
+  }
+
+  // ---- 図面（SVG・DXF の輪郭と、その役割）の表示 ----
+  function drawDrawing(view) {
+    const cs = state.set.contours, roles = state.set.roles;
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    for (const c of cs) { x0 = Math.min(x0, c.b.x0); x1 = Math.max(x1, c.b.x1); y0 = Math.min(y0, c.b.y0); y1 = Math.max(y1, c.b.y1); }
+    const mg = Math.max(4, (x1 - x0) * 0.06), vw = x1 - x0 + mg * 2, vh = y1 - y0 + mg * 2;
+    const scale = Math.min(view.clientWidth / vw, view.clientHeight / vh) || 4;
+    const px = v => v / scale;
+    const svg = el('svg', { id: 'drawSvg', viewBox: `${f3(x0 - mg)} ${f3(-y1 - mg)} ${f3(vw)} ${f3(vh)}`, preserveAspectRatio: 'xMidYMid meet', role: 'img', 'aria-label': '図面の輪郭' });
+    // 大きい順に描くので、玉形の内側の穴は上に重なり、クリックできる
+    cs.forEach((c, i) => {
+      const role = roles[i];
+      const dash = role === 'L' ? `${px(8)} ${px(4)}` : role === 'none' ? `${px(2)} ${px(4)}` : 'none';
+      const p = el('path', { class: `c ${role}${i === state.sel ? ' sel' : ''}`, 'data-i': i, d: pathOf(c.pts, 0), 'stroke-width': px(role === 'none' ? 1.2 : 2), 'stroke-dasharray': dash }, svg);
+      const t = el('title', {}, p);
+      t.textContent = `${i + 1} 番：${ROLE_NAME[role]}（${c.b.w.toFixed(2)}×${c.b.h.toFixed(2)} mm）`;
+      p.addEventListener('click', () => cycleRole(i));
+    });
+    // 番号と役割。小さい輪郭（穴など）は、右上の外側に書く
+    cs.forEach((c, i) => {
+      const small = Math.max(c.b.w, c.b.h) < px(60);
+      const t = el('text', {
+        class: 'cno', 'font-size': px(12), 'text-anchor': small ? 'start' : 'middle',
+        x: f3(small ? c.b.x1 + px(3) : c.b.cx), y: f3(small ? -c.b.y1 - px(2) : -c.b.cy + px(4)),
+      }, svg);
+      t.textContent = `${i + 1} ${ROLE_NAME[roles[i]]}`;
+    });
+    view.insertBefore(svg, view.firstChild);
+  }
+
+  // マウスの位置の角度と、書き出す VCA の半径を読み取る
+  function onHover(ev) {
+    const v = state.view, s = state.svg;
+    if (!v || !s) return;
+    const m = s.svg.getScreenCTM();
+    if (!m) return;
+    const pt = new DOMPoint(ev.clientX, ev.clientY).matrixTransform(m.inverse());
+    const wx = pt.x, wy = -pt.y;
+    let e = v.eyes[0];
+    for (const c of v.eyes) if (Math.abs(wx - c.offset) < Math.abs(wx - e.offset)) e = c;
+    const px = wx - e.offset - e.origin.x, py = wy - e.origin.y;
+    let ang = Math.atan2(py, px) * 180 / Math.PI;
+    if (ang < 0) ang += 360;
+    const n = e.radii.length, i = Math.round((ang / 360) * n) % n;
+    const r = e.radii[i], a = (2 * Math.PI * i) / n;
+    const ox = e.offset + e.origin.x, oy = e.origin.y;
+    s.ray.setAttribute('x1', f3(ox)); s.ray.setAttribute('y1', f3(-oy));
+    s.ray.setAttribute('x2', f3(ox + r * Math.cos(a))); s.ray.setAttribute('y2', f3(-(oy + r * Math.sin(a))));
+    s.tip.setAttribute('cx', f3(ox + r * Math.cos(a))); s.tip.setAttribute('cy', f3(-(oy + r * Math.sin(a))));
+    s.ray.setAttribute('visibility', 'visible'); s.tip.setAttribute('visibility', 'visible');
+    const ro = $('#readout');
+    ro.innerHTML = `${EYE_NAME[e.eye]}　角度 <b>${(i * 360 / n).toFixed(1)}°</b>（${i + 1} 点目）　半径 <b>${r.toFixed(2)}</b> mm`;
+    ro.hidden = false;
+  }
+
+  function clearHover() {
+    const s = state.svg;
+    if (s) { s.ray.setAttribute('visibility', 'hidden'); s.tip.setAttribute('visibility', 'hidden'); }
+    $('#readout').hidden = true;
+  }
+
+  // ---- 角度ごとの半径のグラフ ----
+  function drawGraph(view) {
+    const v = state.view;
+    const W = Math.max(320, view.clientWidth), H = Math.max(240, view.clientHeight);
+    const L = 56, R = 24, T = 56, B = 76;   // 上と下は、案内と読み取りの表示に重ならない余白
+    let lo = Infinity, hi = -Infinity;
+    for (const e of v.eyes) for (const r of e.radii) { lo = Math.min(lo, r); hi = Math.max(hi, r); }
+    const step = hi - lo > 20 ? 5 : hi - lo > 8 ? 2 : 1;
+    lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step;
+    if (hi === lo) hi = lo + step;
+    const X = a => L + (a / 360) * (W - L - R), Y = r => T + (1 - (r - lo) / (hi - lo)) * (H - T - B);
+    const svg = el('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': '角度ごとの半径' });
+    el('rect', { class: 'gbg', x: L, y: T, width: W - L - R, height: H - T - B, 'stroke-width': 1 }, svg);
+    for (let a = 0; a <= 360; a += 45) {
+      el('line', { class: 'gline', x1: X(a), x2: X(a), y1: T, y2: H - B, 'stroke-width': 1 }, svg);
+      const t = el('text', { class: 'lbl', x: X(a), y: H - B + 18, 'text-anchor': 'middle', 'font-size': 12 }, svg);
+      t.textContent = a + '°';
+    }
+    for (let r = lo; r <= hi + 1e-9; r += step) {
+      el('line', { class: 'gline', x1: L, x2: W - R, y1: Y(r), y2: Y(r), 'stroke-width': 1 }, svg);
+      const t = el('text', { class: 'lbl', x: L - 8, y: Y(r) + 4, 'text-anchor': 'end', 'font-size': 12 }, svg);
+      t.textContent = r;
+    }
+    for (const e of v.eyes) {
+      const n = e.radii.length;
+      const pts = e.radii.map((r, i) => `${X((i * 360) / n).toFixed(1)},${Y(r).toFixed(1)}`);
+      pts.push(`${X(360).toFixed(1)},${Y(e.radii[0]).toFixed(1)}`);
+      el('polyline', { class: e.eye === 'R' ? 'curveR' : 'curveL', points: pts.join(' '), 'stroke-width': 1.8 }, svg);
+    }
+    const cur = el('line', { class: 'cursor', y1: T, y2: H - B, 'stroke-width': 1, visibility: 'hidden' }, svg);
+    view.insertBefore(svg, view.firstChild);
+    state.graph = { svg, cur, X, L, R, W };
+    // グラフの上でも、その角度の半径を読み取る
+    svg.addEventListener('pointermove', ev => {
+      const m = svg.getScreenCTM();
+      if (!m) return;
+      const p = new DOMPoint(ev.clientX, ev.clientY).matrixTransform(m.inverse());
+      const a = Math.min(360, Math.max(0, ((p.x - L) / (W - L - R)) * 360));
+      cur.setAttribute('x1', X(a)); cur.setAttribute('x2', X(a)); cur.setAttribute('visibility', 'visible');
+      const parts = v.eyes.map(e => {
+        const n = e.radii.length, i = Math.round((a / 360) * n) % n;
+        return `${EYE_NAME[e.eye]} <b>${e.radii[i].toFixed(2)}</b>`;
+      });
+      $('#readout').innerHTML = `角度 <b>${a.toFixed(1)}°</b>　半径（mm）　${parts.join('　')}`;
+      $('#readout').hidden = false;
+    });
+    svg.addEventListener('pointerleave', () => { cur.setAttribute('visibility', 'hidden'); $('#readout').hidden = true; });
+  }
+
+  // ---- 結果の表 ----
+  function renderStats(set, original) {
+    const v = state.view, tb = $('#stats tbody');
+    if (!v) { tb.innerHTML = '<tr><td>—</td><td>—</td><td>—</td></tr>'; return; }
+    const by = {};
+    for (const e of v.eyes) by[e.eye] = e;
+    const fileVal = (label, eye) => {
+      const o = set.eyes[eye];
+      if (!original.rec || !o || o.mirrored) return '';
+      const x = VCA.sideNumber(original.rec[label], eye);
+      return x === undefined ? '' : ` <small>(${x.toFixed(2)})</small>`;
+    };
+    const cell = (eye, fn) => (by[eye] ? fn(by[eye], set.eyes[eye]) : '—');
+    const rows = [
+      ['点数', (e, o) => (o.n ? `${o.n} <small>形式${o.fmt}・${o.mode}</small>` : (o.mirrored ? '反転' : `${o.pts.length} <small>読み込んだ点</small>`))],
+      ['HBOX', e => e.b.w.toFixed(2) + fileVal('HBOX', e.eye)],
+      ['VBOX', e => e.b.h.toFixed(2) + fileVal('VBOX', e.eye)],
+      ['周長', e => e.circ.toFixed(2) + fileVal('CIRC', e.eye)],
+      ['FED', e => e.fed.toFixed(2) + fileVal('FED', e.eye)],
+      ['基準点のずれ', e => Math.hypot(e.origin.x, e.origin.y).toFixed(2)],
+      ['穴', e => String(e.holes.length)],
+      ['書き出しの点数', () => String(v.n)],
+    ];
+    tb.innerHTML = rows.map(([k, fn]) => `<tr><td>${k}</td><td>${cell('R', fn)}</td><td>${cell('L', fn)}</td></tr>`).join('');
+  }
+
+  // 下の帯：主な結果
+  function renderSum() {
+    const v = state.view;
+    if (!v) { $('#sum').innerHTML = '<span>玉形を読み込むと、ここに寸法が出ます</span>'; return; }
+    const parts = v.eyes.map(e => `<span>${e.eye}　HBOX×VBOX <b>${e.b.w.toFixed(2)}×${e.b.h.toFixed(2)}</b>　周長 <b>${e.circ.toFixed(2)}</b></span>`);
+    $('#sum').innerHTML = parts.join('') + '<span class="unit">単位 mm</span>';
+  }
+
+  // ---- 書き出し ----
   function renderOutputs(hasShape, job, dbl) {
     const stem = Converter.safeFileStem(job, 'shape');
     const dev = Converter.deviceFileName($('#brand').value, $('#number').value || $('#number').placeholder);
@@ -286,11 +810,16 @@
     state.names = names; state.dbl = dbl; state.job = job;
     for (const k of Object.keys(names)) {
       $('#n-' + k).textContent = names[k] || dev.error;
-      document.querySelector(`[data-out="${k}"]`).disabled = !hasShape || !names[k];
+      const b = document.querySelector(`[data-out="${k}"]`);
+      b.disabled = !hasShape || !names[k];
+      b.title = names[k] ? `${names[k]} を保存` : (dev.error || '');
     }
+    const keepOriginal = state.type === 'vca' && $('#keep').value === '1';
+    $('#outText').value = state.vca ? state.vca.text : '';
+    $('#outTextTitle').textContent = keepOriginal ? '書き出す VCA の中身（PTN・JOB は元のファイルのまま）' : '書き出す VCA・PTN・JOB の中身';
     const msgs = [];
     if (state.vca) state.vca.warnings.forEach(m => msgs.push(['w', 'VCA・PTN・JOB：' + m]));
-    if (state.type === 'vca' && $('#keep').value === '1') msgs.push(['i', 'PTN・JOB は元のファイルの中身をそのまま使います（VCA の点数の設定は使いません）']);
+    if (keepOriginal) msgs.push(['i', 'PTN・JOB は元のファイルの中身をそのまま使います（VCA の点数の設定は使いません）']);
     showMsgs('#outmsgs', msgs);
   }
 
@@ -300,7 +829,6 @@
     for (const [cls, text] of msgs) { const li = document.createElement('li'); li.className = cls; li.textContent = text; ul.appendChild(li); }
   }
 
-  // ---- 書き出し ----
   function download(name, str, type) {
     const bytes = new Uint8Array(str.length);
     for (let i = 0; i < str.length; i++) bytes[i] = str.charCodeAt(i) & 0xff;
@@ -312,7 +840,7 @@
   }
 
   document.querySelectorAll('[data-out]').forEach(btn => btn.addEventListener('click', () => {
-    const k = btn.dataset.out, set = state.set, name = state.names[k];
+    const k = btn.dataset.out, set = state.set, name = state.names && state.names[k];
     if (!set || !name) return;
     const keepOriginal = state.type === 'vca' && $('#keep').value === '1';
     if (k === 'svg') download(name, unescape(encodeURIComponent(Converter.toSVG(set, { dbl: state.dbl, title: state.job }))), 'image/svg+xml');
