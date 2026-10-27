@@ -630,17 +630,21 @@
    * Nidek 機の USB メモリ用のファイル名を作る（拡張子を除く）。
    * 取扱説明書（ICE 900）: 「銘柄名 - 番号」で、ハイフンを含めて最大 16 桁。
    * 取扱説明書（ME-1000）: コードに入力できる英字は大文字だけ。そのため銘柄名は大文字にする。
+   * 取扱説明書（Me 1200、LEXCE）: 銘柄名は英字を 1 文字以上含み、ハイフンを含まない 12 文字まで。
+   * 銘柄名を付けないときは、英字もハイフンも含まない 16 桁の数字にする。
    * OptiBoard の報告: 先頭を 0 で埋めて 16 桁にする（例 0000000000123456.ptn）。
    * @returns {{name?: string, error?: string}}
    */
+  const BRAND_MAX = 12;
   function deviceFileName(brand, number) {
     brand = String(brand || '').trim().toUpperCase();
     const digits = String(number || '').replace(/\D/g, '');
     if (!digits) return { error: '番号を入力してください（数字）' };
     if (brand) {
-      if (!/^[A-Z0-9]+$/.test(brand)) return { error: '銘柄名は半角英数字にしてください' };
+      if (!/^[A-Z0-9]+$/.test(brand)) return { error: '銘柄名は半角英数字にしてください（ハイフンは使えません）' };
+      if (!/[A-Z]/.test(brand)) return { error: '銘柄名には英字を 1 文字以上入れてください' };
+      if (brand.length > BRAND_MAX) return { error: `銘柄名は ${BRAND_MAX} 文字までです` };
       const room = 16 - brand.length - 1;
-      if (room < 1) return { error: '銘柄名が長すぎます（ハイフンと番号を含めて 16 桁まで）' };
       if (digits.length > room) return { error: `番号が長すぎます（この銘柄名では ${room} 桁まで）` };
       return { name: `${brand}-${digits.padStart(room, '0')}` };
     }

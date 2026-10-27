@@ -70,7 +70,7 @@ VCA（OMA / DCS）の周辺で目にする「JOB データ」「PTN データ」
 
 | メーカー | JOB にあたるもの | PTN にあたるもの | ファイルでの受け渡し |
 |---|---|---|---|
-| Nidek | JOB データ（形、加工条件、レイアウト） | PTN データ（形と、フレームに付く情報） | USB メモリに `.job` / `.ptn` |
+| Nidek | JOB データ（形、加工条件、レイアウト） | PTN データ（形と、フレームに付く情報）。新しい加工機（Me 1200、LEXCE）は「形状データ」と呼ぶ | USB メモリに `.job` / `.ptn` |
 | Huvitz | Job（Job Manager で管理） | Pattern は型板トレースのことで、保存する区分ではない | SD カードにジョブを保存。DCS（OMA）の読み書き |
 | Essilor | Job（ID を付けて保存。トレーサー TESS は 200 件） | 区別なし（形も Job として ID で呼び出す） | TESS は RS-232・LAN で、OMA のプロトコルに対応 |
 | Weco | Job（jobs base） | Pattern / Shape（pattern base、shape library）。主にブロッカー側で保存 | OMA でやり取り。ファイル形式の記載なし |
@@ -126,12 +126,13 @@ VCA（OMA / DCS）の周辺で目にする「JOB データ」「PTN データ」
 | ME-1000 | 加工機 | JOB と PTN を別々に保存する（上の表のとおり）。通信方式は STANDARD・LAN・VCA（PRESET / AUTO）・VCA-B など |
 | LEX-1000 | パターンレス加工機 | 「PTN」という言葉は使わない。100 件の保存領域に、形・レイアウト・素材・フレームの種類などを入れる。JOB は ICE-1000 や ICE-9000 から受け取る |
 | Me 1200 | 加工機 | 「形状データ（shape data）」と「加工履歴データ」を保存する。形状データの中身はトレースデータ、FPD（DBL）、サイズ、パッシブ／アクティブ、レンズの素材と種類、フレームの種類、研磨・面取りで、ICE 900 の PTN と同じ。設定で PD と光学中心の高さも加えられる。番号は「銘柄名 - 番号」で最大 16 桁。銘柄名は英字を 1 文字以上含む 12 桁まで。足りない桁は番号の先頭を 0 で埋める（例：NIDEK-12 → NIDEK-0000000012）。銘柄名のない番号は Others フォルダに入る。保存できるのは 1 銘柄 500 件、500 銘柄、合計 20,000 件まで。加工後のデータは加工履歴フォルダに自動で保存され、形状データに変えられる。JOB は ICE 1000 から JOB コードで受け取る。通信方式は N-LAN・VCA-B・VCA-C |
+| LEXCE Trend / Trend8 | パターンレス加工機 | JOB と PTN の区別がなく、「形状データ（shape data）」だけを保存する。中身は玉形、FPD、DBL、PD、1/2PD、光学中心の高さ、サイズ、フレームカーブ、周長、溝の幅と深さ、レンズの素材と種類、フレームの種類、加工の方式、研磨、レイアウトの方式（パッシブ／アクティブ）、面取り、穴あけ、縁の加工の種類で、レイアウトまで含む。名前は「銘柄名-番号」で 16 文字（ハイフンを含む）。銘柄名は英字を 1 文字以上含み、ハイフンを含まない 12 文字まで。足りない桁は番号の先頭を 0 で埋める（例：NIDEK-0000001234）。銘柄名を付けないときは、英字もハイフンも含まない 16 桁の数字にする。保存できるのは 500 銘柄、合計およそ 20,000 件まで。USB メモリへのバックアップ・復元・追加ができる。サーバーやブロッカーとは Ethernet でやり取りし、通信方式は N-LAN・VCA-B・VCA-C |
 | LE-700 | 加工機 | 「形状データ」として約 20,000 件を銘柄別フォルダで保存。USB メモリへのバックアップと復元ができる |
 | LT-980 | トレーサー | 自分では保存せず、トレースしたデータをサーバーへ送る（STD、VCA、NIDEK LAN） |
 
-LE-1000、LT-1200、LEXCE、ICE-1500 などの取扱説明書は入手できず、確認していません。
+LE-1000、LT-1200、ICE-1500 などの取扱説明書は入手できず、確認していません。
 
-新しい加工機の Me 1200 では「PTN」という言葉を使わず、同じ中身を「形状データ」と呼んでいます。
+新しい加工機の Me 1200 では「PTN」という言葉を使わず、同じ中身を「形状データ」と呼んでいます。さらに新しい LEXCE では、形状データにレイアウトまで入り、JOB と PTN の区別そのものがなくなっています。
 
 ### OptiBoard での報告（OMA → PTN / JOB）
 
@@ -330,6 +331,7 @@ Topcon、Takubo、Santinelli については、JOB や PTN を定義した取扱
 - Nidek LEX-1000 Operator's Manual（[ManualsLib](https://www.manualslib.com/manual/1254231/Nidek-Medical-Lex-1000.html)）
 - Nidek LE-700 Operator's Manual（[ManualsLib](https://www.manualslib.com/manual/1251928/Nidek-Medical-Le-700.html)）
 - Nidek Me 1200 Operator's Manual（[usedsantinelli.com、PDF](http://usedsantinelli.com/wp-content/uploads/2014/06/Me-1200-OME-44501-P912A-S.pdf)）
+- Nidek LEXCE Trend / Trend8 Operator's Manual（[Scribd](https://www.scribd.com/document/768886163/LE021-OME-LE021-P902-B9)）
 - Nidek LT-980 Operator's Manual（[vho.be](https://www.vho.be/media/e2/c4/1c/1737999527/6797c4a67cb7a-Handleiding_LT-980_Satellite_Tracer_-_ENG.pdf.pdf?ts=1737999527)）
 - Canadian Optical, Quick Guide – Nidek（[PDF](https://canadianoptical.com/public_document/quickguide_nidek.pdf)）
 - Huvitz HPE-810 User Manual（[PDF](https://ml-oc.com/media/pdf/HPE-810_USERS_MANUAL.pdf)）

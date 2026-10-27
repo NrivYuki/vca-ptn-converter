@@ -117,7 +117,7 @@
       </fieldset>
       <fieldset>
         <legend>JOB・PTN（Nidek 機の USB メモリ用）</legend>
-        <label class="f">銘柄名（省略可）<input id="brand" type="text" maxlength="14" placeholder="例：S1" autocapitalize="characters"><span class="h">半角英数字。英字は大文字にします（取扱説明書で、コードの英字は大文字だけとされているため）</span></label>
+        <label class="f">銘柄名（省略可）<input id="brand" type="text" maxlength="12" placeholder="例：S1" autocapitalize="characters"><span class="h">半角英数字で、英字を 1 文字以上含む 12 文字まで（ハイフンは使えません）。英字は大文字にします（取扱説明書で、コードの英字は大文字だけとされているため）</span></label>
         <label class="f">番号<input id="number" type="text" inputmode="numeric" placeholder="例：152152"><span class="h">名前は 16 桁にそろえます（足りない桁は番号の先頭を 0 で埋めます）</span></label>
         <label class="f">拡張子<select id="extcase"><option value="lower">小文字（.ptn / .job）</option><option value="upper">大文字（.PTN / .JOB）</option></select><span class="h">USB メモリ（FAT32）は大文字と小文字を区別しないので、通常はどちらでも同じです</span></label>
         <label class="f">中身<select id="keep"><option value="1">元の VCA をそのまま使う</option><option value="0">このツールで VCA を作り直す</option></select><span class="h">元が VCA のときだけ選べます</span></label>
