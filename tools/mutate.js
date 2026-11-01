@@ -11,7 +11,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const repo = path.join(__dirname, '..');
-const TESTS = ['tests/conformance.test.js'];
+const TESTS = ['tests/conformance.test.js', 'tests/formats.test.js'];
 const V = 'converter.js';
 
 // [名前, ファイル, 元の文字列, 壊した文字列]。元の文字列はファイルの中にちょうど 1 か所あること(改行は LF で書く)
@@ -34,10 +34,12 @@ const M = [
   ['R の行を 16 個ずつにする', V, 'function splitLines(label, vals, per = 15)', 'function splitLines(label, vals, per = 16)'],
   ['ZFMT=0 を書かない', V, "      lines.push('ZFMT=0');", ''],
   ['半径を時計回りに並べる', V, 'const a = (2 * Math.PI * i) / n, dx = Math.cos(a), dy = Math.sin(a);', 'const a = (-2 * Math.PI * i) / n, dx = Math.cos(a), dy = Math.sin(a);'],
-  ['原点を箱の中心に合わせ直さない', V, 'const r = resample(centered(set.eyes[eye].pts), n);', 'const r = resample(set.eyes[eye].pts, n);'],
+  ['書いた点の箱の中心に合わせ直さない', V, 'if (off <= 0.005) break;', 'break;'],
+  ['合わせ直した分だけ穴をずらさない', V, "const d = res[e].shift, o = Object.assign({}, h, { x: h.x - d.x, y: h.y - d.y });", 'const d = res[e].shift, o = Object.assign({}, h);'],
   ['原点のずれを知らせない', V, 'if (off > 0.05) set.warnings.push', 'if (false) set.warnings.push'],
-  ['HBOX を丸める前の半径で計算する', V, 'r.radii = r.radii.map(v => Math.max(0, Math.round(v * 100)) / 100);', ''],
+  ['HBOX を丸める前の半径で計算する', V, 't.radii = t.radii.map(v => Math.max(0, Math.round(v * 100)) / 100);', ''],
   ['CIRC の左右の差を知らせない', V, 'circ.every(Number.isFinite) && Math.abs(circ[0] - circ[1]) >= 0.005', 'false'],
+  ['反対の眼に作った穴を書かない', V, "else kept = kept.filter(r => r.label !== 'DRILLE');", 'else {}'],
   ['眼 B の穴を左眼で反転しない', V, "if (f.eye === 'B') set.holes.L.push(VCA.mirrorFeature(f));", "if (f.eye === 'B') set.holes.L.push(f);"],
 ];
 

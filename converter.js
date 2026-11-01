@@ -186,6 +186,7 @@
         if (f.eye === 'L') set.holes.L.push(f);
         if (f.eye === 'B') set.holes.L.push(VCA.mirrorFeature(f));
       }
+      set.otherHoles = other;
       if (other) set.warnings.push(`縁・外接箱・グループ基準の穴 ${other} 個は、表示と SVG・DXF には描きません`);
     }
     return set;
@@ -659,7 +660,60 @@
   }
 
   /**
-   * SVG から外形を読み込む。曲線はブラウザの getPointAtLength で点列にする。
+   * 直線だけでできた SVG の図形(polygon・polyline・line、角の丸くない rect、M・L・H・V・Z だけの path)の頂点。
+   * 曲線を含む図形は null(長さに沿って点を取る)。座標は要素の座標系のまま
+   * @returns {[{pts: [{x, y}], closed: boolean}]|null}
+   */
+  function straightVertices(el) {
+    const tag = el.nodeName.toLowerCase(), num = a => parseFloat(el.getAttribute(a)) || 0;
+    if (tag === 'polygon' || tag === 'polyline') {
+      const pts = Array.from(el.points || [], p => ({ x: p.x, y: p.y }));
+      return [{ pts, closed: tag === 'polygon' }];
+    }
+    if (tag === 'line') return [{ pts: [{ x: num('x1'), y: num('y1') }, { x: num('x2'), y: num('y2') }], closed: false }];
+    if (tag === 'rect') {
+      if (num('rx') || num('ry')) return null;
+      const x = num('x'), y = num('y'), w = num('width'), h = num('height');
+      return [{ pts: [{ x, y }, { x: x + w, y }, { x: x + w, y: y + h }, { x, y: y + h }], closed: true }];
+    }
+    if (tag !== 'path') return null;
+    const d = el.getAttribute('d') || '';
+    if (/[^MmLlHhVvZz\d\s,.eE+-]/.test(d)) return null;
+    const tokens = d.match(/[MmLlHhVvZz]|[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?/g) || [];
+    const subs = [];
+    let cur = null, cmd = '', x = 0, y = 0, sx = 0, sy = 0, i = 0;
+    const n = () => +tokens[i++];
+    while (i < tokens.length) {
+      if (/[A-Za-z]/.test(tokens[i])) cmd = tokens[i++];
+      else if (!cmd || cmd.toUpperCase() === 'Z') return null;   // Z の後に命令の無い数は読めない
+      if (!cur && cmd.toUpperCase() !== 'M') return null;
+      const rel = cmd === cmd.toLowerCase();
+      switch (cmd.toUpperCase()) {
+        case 'M': {
+          const a = n(), b = n();
+          x = rel ? x + a : a; y = rel ? y + b : b; sx = x; sy = y;
+          cur = { pts: [{ x, y }], closed: false }; subs.push(cur);
+          cmd = rel ? 'l' : 'L';   // M の後に続く座標は直線
+          break;
+        }
+        case 'L': { const a = n(), b = n(); x = rel ? x + a : a; y = rel ? y + b : b; cur.pts.push({ x, y }); break; }
+        case 'H': { const a = n(); x = rel ? x + a : a; cur.pts.push({ x, y }); break; }
+        case 'V': { const b = n(); y = rel ? y + b : b; cur.pts.push({ x, y }); break; }
+        case 'Z': {
+          cur.closed = true; x = sx; y = sy;
+          const f = cur.pts[0], l = cur.pts[cur.pts.length - 1];
+          if (cur.pts.length > 1 && f.x === l.x && f.y === l.y) cur.pts.pop();
+          break;
+        }
+        default: return null;
+      }
+      if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+    }
+    return subs;
+  }
+
+  /**
+   * SVG から外形を読み込む。直線だけの図形は頂点をそのまま使い(straightVertices)、曲線を含む図形はブラウザの getPointAtLength で点列にする。
    * @param opts {scale?: number(1 単位あたりの mm), singleEye?: 'R'|'L', doc?: Document}
    */
   function fromSVG(text, opts) {
@@ -698,6 +752,13 @@
           if (nm) names.push(nm);
         }
         const src = { label: `<${tag}>` + (names.length ? ' ' + names[0] : ''), hint: names.join(' ') };
+        // 直線だけの図形は、頂点をそのまま使う(長さに沿って点を取ると、とがった角の頂点を取りこぼして角が削れる)
+        const straight = straightVertices(el);
+        if (straight) {
+          const tr = p => { const r = m ? { x: m.a * p.x + m.c * p.y + m.e, y: m.b * p.x + m.d * p.y + m.f } : p; return { x: r.x * k, y: -r.y * k }; };
+          for (const sp of straight) if (sp.pts.length > 1) pieces.push({ pts: sp.pts.map(tr), closed: sp.closed, src });
+          continue;
+        }
         let pts = [], prev = null;
         const flush = closedHint => {
           if (pts.length > 1) pieces.push({ pts, closed: closedHint, src });
@@ -875,10 +936,21 @@
     const res = {};
     for (const eye of EYES) {
       if (!set.eyes[eye]) continue;
-      // 半径の基準は箱の中心(5.4.8)。VCA から読んだ玉形の基準点がずれていても、ここで合わせ直す
-      const r = resample(centered(set.eyes[eye].pts), n);
-      // R レコードに書く値(1/100 mm の整数)に丸めてから寸法を計算し、HBOX などと半径データを一致させる
-      r.radii = r.radii.map(v => Math.max(0, Math.round(v * 100)) / 100);
+      // 半径の基準は箱の中心(5.4.8)。VCA から読んだ玉形の基準点がずれていても、ここで合わせ直す。
+      // 点と点の間にある角は測られないので、形の箱の中心と書いた点の箱の中心は食い違う(角のとがった形を 360 点で書くと
+      // 0.05 mm ほど)。受け取る側は書いた点から箱を求めるので、書いた点の箱の中心が 0.005 mm に収まるまで合わせ直す
+      let pts = centered(set.eyes[eye].pts), best = null, sx = 0, sy = 0;
+      for (let k = 0; k < 8; k++) {
+        const t = resample(pts, n);
+        // R レコードに書く値(1/100 mm の整数)に丸めてから寸法を計算し、HBOX などと半径データを一致させる
+        t.radii = t.radii.map(v => Math.max(0, Math.round(v * 100)) / 100);
+        const b = bbox(radiiToPoints(t.radii)), off = Math.hypot(b.cx, b.cy);
+        if (!best || off < best.off) best = { t, off, sx, sy };
+        if (off <= 0.005) break;
+        pts = pts.map(p => ({ x: p.x - b.cx, y: p.y - b.cy }));
+        sx += b.cx; sy += b.cy;
+      }
+      const r = Object.assign(best.t, { shift: { x: best.sx, y: best.sy } });
       res[eye] = r;
       if (r.multi) warnings.push(`${eye}: ${n} 点中 ${r.multi} 点で輪郭と 2 回以上交わりました(内側にえぐれた形)。いちばん外側の輪郭で近似しています`);
       if (r.miss) warnings.push(`${eye}: ${r.miss} 点で輪郭と交わりませんでした。箱の中心が形の外側にあるため、半径で表せません(玉形として使えない形です)`);
@@ -905,9 +977,20 @@
       kept = kept.filter(r => r.label !== 'DRILLE');
       warnings.push('DRILLE に誤りがあるので、穴あけのレコードは引き継ぎません');
     }
+    // 反対の眼を左右反転で作り(fillMirror)、穴も反転して作ったときは、元の DRILLE に反対の眼の穴が無い。
+    // 元の穴がすべて基準 C なら、元の DRILLE の代わりに両眼の穴を基準 C で書く。C 以外の穴は反転できないので知らせる
+    if (set.holes && EYES.some(e => res[e] && set.holes[e].some(h => h.mirrored)) && kept.some(r => r.label === 'DRILLE')) {
+      if (set.otherHoles) warnings.push('縁・外接箱・グループ基準の穴は、反対の眼に作れません。反対の眼の穴は書き出しません');
+      else kept = kept.filter(r => r.label !== 'DRILLE');
+    }
     kept.forEach(r => lines.push(r.label + '=' + r.fields.join(';')));
     // 穴あけ: 元の VCA の DRILLE を引き継ぐときはそちらを使う。図面から作った穴は箱中心基準(C)で書く
-    const holes = set.holes ? EYES.filter(e => res[e]).flatMap(e => set.holes[e]) : [];
+    // 図面から作った穴は、形の箱の中心からの位置。書いた点の箱の中心に合わせ直した分だけずらす
+    const holes = set.holes ? EYES.filter(e => res[e]).flatMap(e => set.holes[e].map(h => {
+      const d = res[e].shift, o = Object.assign({}, h, { x: h.x - d.x, y: h.y - d.y });
+      if (Number.isFinite(h.xEnd)) Object.assign(o, { xEnd: h.xEnd - d.x, yEnd: h.yEnd - d.y });
+      return o;
+    })) : [];
     if (holes.length && !kept.some(r => r.label === 'DRILLE' || r.label === 'DRILL')) {
       VCA.drillRecords(holes).forEach(r => lines.push(r[0] + '=' + r.slice(1).join(';')));
       warnings.push(`穴 ${holes.length} 個を DRILLE(箱中心基準 C)で書きました。機器が箱中心基準の穴あけデータに対応しているか確かめてください`);

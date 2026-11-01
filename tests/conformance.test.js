@@ -165,18 +165,40 @@ spec('最初の半径は 0°(3 時)で、続きは反時計回り(5.4.10)',
     assert.ok(Math.abs(t[45] - 2000) <= 1 && Math.abs(t[315] - 2500) <= 1, `45°: ${t[45]} / 315°: ${t[315]}`);
   });
 
-spec('半径の原点は箱の中心。元の VCA の原点がずれていても、箱の中心に合わせ直して書く(5.4.8)',
-  { req: ['R028'], kind: ['正常', '異常'], side: '送る' }, () => {
+spec('半径の原点は箱の中心。元の VCA の原点がずれていても、点数を変えて角が測られなくても、書いた点の箱の中心に合わせ直して書く(5.4.8)',
+  { req: ['R028'], kind: ['正常', '異常', '境界'], side: '送る' }, () => {
     // 半径 25 mm の円を、原点から x に 3 mm ずらした形(等角度 360 点)
     const shifted = Array.from({ length: 360 }, (_, i) => {
       const a = (i * Math.PI) / 180, c = Math.cos(a);
       return Math.round((3 * c + Math.sqrt(625 - 9 * (1 - c * c))) * 100);
     });
-    for (const src of [both, file('REQ=FIL', 'JOB=A1', ...trace('R', shifted))]) {
-      const p = points(traces(out(src).text)[0].values), xs = p.map(q => q.x), ys = p.map(q => q.y);
+    // 角のとがった形(30-60° だけへこんだ形)を点数を変えて書くと、点と点の間の角は測られない。書いた点の箱の中心で合わせる
+    const dentVals = Array.from({ length: 360 }, (_, i) => (i >= 30 && i <= 60 ? 2000 : 2500));
+    const cases = [[both, 360], [file('REQ=FIL', 'JOB=A1', ...trace('R', shifted)), 360]];
+    for (const n of [400, 500, 1000]) cases.push([file('REQ=FIL', 'JOB=A1', ...trace('R', dentVals)), n]);
+    for (const [src, n] of cases) {
+      const p = points(traces(out(src, { n }).text)[0].values), xs = p.map(q => q.x), ys = p.map(q => q.y);
       const cx = (Math.max(...xs) + Math.min(...xs)) / 2, cy = (Math.max(...ys) + Math.min(...ys)) / 2;
       assert.ok(Math.abs(cx) <= 0.01 && Math.abs(cy) <= 0.01, `(${cx}, ${cy})`);
     }
+  });
+
+spec('角のとがった形でも、書いた点の箱の中心が原点。図面から作った穴は、形に対する位置を変えずに測り直す(5.4.8・5.5.2.2)',
+  { req: ['R028'], kind: ['境界'], side: '送る' }, () => {
+    // 五角形(下の辺 y = -25、右の辺 x = 25、屋根の頂点 (-10, 25))を、形の箱の中心を原点にして渡す。
+    // 屋根の頂点は 360 点の角度に乗らないので、書いた点の箱は形の箱より低く、合わせ直すと原点が下へ動く
+    const pts = [{ x: -25, y: -25 }, { x: 25, y: -25 }, { x: 25, y: 5 }, { x: -10, y: 25 }, { x: -25, y: 5 }];
+    const hole = { eye: 'R', origin: 'C', x: 5, y: -10, diameter: 1.4 };
+    const v = C.toVCA({ eyes: { R: { pts } }, holes: { R: [hole], L: [] } }, { n: 360, job: 'A1' });
+    const r = traces(v.text)[0].values.map(x => +x / 100), p = points(traces(v.text)[0].values);
+    const xs = p.map(q => q.x), ys = p.map(q => q.y);
+    const cx = (Math.max(...xs) + Math.min(...xs)) / 2, cy = (Math.max(...ys) + Math.min(...ys)) / 2;
+    assert.ok(Math.abs(cx) <= 0.01 && Math.abs(cy) <= 0.01, `書いた点の箱の中心 (${cx}, ${cy})`);
+    // 書いた原点の、形の上での位置: 0° の点は右の辺(x = 25)、270° の点は下の辺(y = -25)に乗る
+    const ox = 25 - r[0], oy = -25 + r[270];
+    assert.ok(Math.abs(oy) > 0.02, `原点が動いている(${oy})`);
+    const f = fields(lines(v.text).find(l => label(l) === 'DRILLE'));
+    assert.ok(Math.abs(+f[2] - (hole.x - ox)) <= 0.01 && Math.abs(+f[3] - (hole.y - oy)) <= 0.01, `穴 (${f[2]}, ${f[3]}) / (${hole.x - ox}, ${hole.y - oy})`);
   });
 
 spec('HBOX・VBOX・CIRC は、R の値から求めた幅・高さ・周長と一致する(5.4.9.3)',

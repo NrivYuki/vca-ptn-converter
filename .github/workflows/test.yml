@@ -14,11 +14,15 @@ jobs:
       - uses: actions/checkout@v4
         with:
           path: vca-ptn-converter
-      # 義務の番号の照合に使う
+      # 義務の番号の照合と、vca-shape-maker の書き出しを読む組み合わせのテストに使う
       - uses: actions/checkout@v4
         with:
           repository: NrivYuki/vca-guide
           path: vca-guide
+      - uses: actions/checkout@v4
+        with:
+          repository: NrivYuki/vca-shape-maker
+          path: vca-shape-maker
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node }}

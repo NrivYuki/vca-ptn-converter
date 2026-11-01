@@ -46,6 +46,8 @@ SVG・DXF は図面のデータなので、どの線が玉形でどの線が穴�
 
 このツールが書き出す SVG(`eye-R`・`holes-R` などの id)と DXF(レイヤー R・L・HOLE)は、読み込み直すと同じ割り当てになります。
 
+SVG の直線だけの図形(`M`・`L`・`H`・`V`・`Z` だけの `path`、`polygon`、`polyline`、`line`、角の丸くない `rect`)は、頂点をそのまま読みます。曲線を含む図形は、長さに沿って 0.05 mm ごとに点を取るので、とがった角はわずかに削れます。
+
 ## ファイル名の決まり
 
 | 対象 | 決まり | 根拠 |
@@ -81,7 +83,7 @@ sample-data.js   「サンプルを読み込む」用のデータ
 samples/*.vca    サンプルファイル(下記)
 docs/job-ptn.md  メーカーごとの JOB・PTN の定義と出典
 docs/conformance.md  規格(DCS v3.14)との対応(どの決まりをどう扱うか)
-tests/           テスト(conformance.test.js: 読み書きが規格の決まりを守るか。spec.js: テストの書き方。ui/: 画面の検査)
+tests/           テスト(conformance.test.js: 読み書きが規格の決まりを守るか。formats.test.js: 読み書きの形式の組み合わせ。spec.js: テストの書き方。ui/: 画面の検査)
 tools/trace.js   規格との対応の表とテストを突き合わせる
 tools/mutate.js  実装をわざと壊し、テストが見つけるかを確かめる(ミューテーションテスト)
 ```
@@ -92,7 +94,9 @@ tools/mutate.js  実装をわざと壊し、テストが見つけるかを確か
 npm test
 ```
 
-読み込みと書き出しが規格の決まりを守るか(ファイルの 1・2 行目、JOB の文字、左右のレコード、TRCFMT と R の書式・向き・原点、引き継ぐレコード、DRILLE の誤りの扱い、形式 2 の規格の例など)を確かめます。どの決まりをどのテストが確かめているかは [docs/conformance.md](docs/conformance.md) と [docs/conformance-tests.md](docs/conformance-tests.md) にあります。次のコマンドで突き合わせ、テストの無い決まりがあれば失敗します(GitHub Actions でも動かします)。
+読み込みと書き出しが規格の決まりを守るか(ファイルの 1・2 行目、JOB の文字、左右のレコード、TRCFMT と R の書式・向き・原点、引き継ぐレコード、DRILLE の誤りの扱い、形式 2 の規格の例など)を `tests/conformance.test.js` で確かめます。
+
+読み込める形式と書き出せる形式の組み合わせは、`tests/formats.test.js` ですべて通します。元のデータ(VCA の両眼・片眼・不等角度・形式 2・穴あり、それを DXF にしたもの、隣に vca-shape-maker があればその書き出し)ごとに、反対の眼を作る・作らない × 1 回目の書き出し(VCA・PTN・JOB・DXF)× 2 回目の書き出しで、読み直した眼・形・寸法・穴・JOB・DBL が変わらないこと、同じ形式で 2 回書くと中身が同じことを確かめます。SVG を通る組み合わせは、ブラウザが要るので画面の検査で確かめます。どの決まりをどのテストが確かめているかは [docs/conformance.md](docs/conformance.md) と [docs/conformance-tests.md](docs/conformance-tests.md) にあります。次のコマンドで突き合わせ、テストの無い決まりがあれば失敗します(GitHub Actions でも動かします)。
 
 ```sh
 node tools/trace.js --check
@@ -106,7 +110,7 @@ npm run mutate
 
 VCA の読み書きそのもの(`vca-parser.js`)は、vca-guide のテストで確かめています。
 
-画面(書き出す VCA の JOB、誤りの知らせ、保存のボタン、引き継がないレコードの知らせ)は、Chrome をヘッドレスで動かして確かめます(Node.js 22 以上)。リポジトリのフォルダで実行し、画像は OS の一時フォルダの vca-ui-check に置きます。
+画面(書き出す VCA の JOB、誤りの知らせ、保存のボタン、引き継がないレコードの知らせ、SVG を通る組み合わせ、vca-lens-simulator の三面図の SVG の読み込み)は、Chrome をヘッドレスで動かして確かめます(Node.js 22 以上)。リポジトリのフォルダで実行し、画像は OS の一時フォルダの vca-ui-check に置きます。
 
 ```sh
 npm run ui

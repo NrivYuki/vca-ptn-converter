@@ -8,7 +8,7 @@
     "node": ">=18"
   },
   "scripts": {
-    "test": "node --test tests/conformance.test.js",
+    "test": "node --test tests/conformance.test.js tests/formats.test.js",
     "trace": "node tools/trace.js",
     "mutate": "node tools/mutate.js",
     "ui": "node tests/ui/cdp.js index.html tests/ui/steps.js"
