@@ -1,13 +1,13 @@
 /*
  * converter.js — vca-ptn Converter の変換処理
  *
- * VCA（OMA / DCS）・JOB・PTN・SVG・DXF の間で玉形（レンズの外形）を変換する。
- * JOB / PTN は「中身が VCA テキストのもの」だけを扱う（機器が書き出す独自形式は非公開のため扱えない）。
+ * VCA(OMA / DCS)・JOB・PTN・SVG・DXF の間で玉形(レンズの外形)を変換する。
+ * JOB / PTN は「中身が VCA テキストのもの」だけを扱う(機器が書き出す独自形式は非公開のため扱えない)。
  * JOB / PTN の扱いは、OptiBoard の OMA 関連スレッドと公開されている取扱説明書の情報だけに基づく。
  * MIT License
  *
- * 依存: vca-parser.js（window.VCA）。ラベルの定義表 vca-records.js は、あれば vca-parser.js が使う
- * SVG の読み込み（fromSVG）だけはブラウザの DOM が必要。
+ * 依存: vca-parser.js(window.VCA)。ラベルの定義表 vca-records.js は、あれば vca-parser.js が使う
+ * SVG の読み込み(fromSVG)だけはブラウザの DOM が必要。
  */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory(require('./vca-parser.js'));
@@ -16,21 +16,21 @@
   'use strict';
 
   /*
-   * 玉形セット（このファイルの中の共通の形）
+   * 玉形セット(このファイルの中の共通の形)
    *   { eyes: { R?: Outline, L?: Outline }, holes?: { R: Feature[], L: Feature[] }, object?: 'F'|'P'|'D',
    *     dbl, job, rec, records, hasSag, unitScale, unitNote, contours, roles, autoRoles, warnings, errors }
-   *   （rec・records・hasSag は VCA から、unitScale・unitNote・contours・roles・autoRoles は SVG / DXF から読み込んだときだけ）
-   *   Outline: { pts: [{x, y}] }  単位 mm、検者が装用者を正面から見た向き（x 右、y 上）。
-   *   pts は閉じた輪郭（最後の点から最初の点へ戻る）。
-   *   Feature: 穴（vca-parser.js の drillFeatures と同じ形）。座標はその眼の箱中心基準（DRILLE の基準 C）。
-   *   object: TRCFMT の対象（F フレーム／P 型板／D デモレンズ）。
+   *   (rec・records・hasSag は VCA から、unitScale・unitNote・contours・roles・autoRoles は SVG / DXF から読み込んだときだけ)
+   *   Outline: { pts: [{x, y}] }  単位 mm、検者が装用者を正面から見た向き(x 右、y 上)。
+   *   pts は閉じた輪郭(最後の点から最初の点へ戻る)。
+   *   Feature: 穴(vca-parser.js の drillFeatures と同じ形)。座標はその眼の箱中心基準(DRILLE の基準 C)。
+   *   object: TRCFMT の対象(F フレーム / P 型板 / D デモレンズ)。
    */
 
   const EYES = ['R', 'L'];
 
   // ---- 入力の種類の判定 -------------------------------------------------------
   /**
-   * 文字列（1 文字 = 1 バイト）とファイル名から種類を判定する。
+   * 文字列(1 文字 = 1 バイト)とファイル名から種類を判定する。
    * @returns {'vca'|'svg'|'dxf'|'unknown'}
    */
   function detect(s, name) {
@@ -42,7 +42,7 @@
     return 'unknown';
   }
 
-  /** 表示できない文字（制御文字など）の割合。VCA テキストかどうかの目安に使う。 */
+  /** 表示できない文字(制御文字など)の割合。VCA テキストかどうかの目安に使う。 */
   function binaryRatio(s) {
     const n = Math.min(s.length, 8192);
     if (!n) return 0;
@@ -72,24 +72,24 @@
     return a / 2;
   }
 
-  /** 外形の寸法（HBOX・VBOX・周長、mm） */
+  /** 外形の寸法(HBOX・VBOX・周長、mm) */
   function measure(pts) {
     const b = bbox(pts);
     return { hbox: b.w, vbox: b.h, circ: VCA.circumference(pts), cx: b.cx, cy: b.cy };
   }
 
-  /** 箱の中心が原点に来るように移動する（VCA の半径の基準は箱の中心） */
+  /** 箱の中心が原点に来るように移動する(VCA の半径の基準は箱の中心) */
   function centered(pts) {
     const b = bbox(pts);
     return pts.map(p => ({ x: p.x - b.cx, y: p.y - b.cy }));
   }
 
-  /** 左右反転（右眼の形から左眼の形を作る）。正面視なので x の符号を反転する。 */
+  /** 左右反転(右眼の形から左眼の形を作る)。正面視なので x の符号を反転する。 */
   function mirror(pts) {
     return pts.map(p => ({ x: -p.x, y: p.y })).reverse();
   }
 
-  /** 片眼しかないとき、反対の眼を左右反転して作る（箱中心基準の穴も反転する） */
+  /** 片眼しかないとき、反対の眼を左右反転して作る(箱中心基準の穴も反転する) */
   function fillMirror(set) {
     const out = Object.assign({}, set, { eyes: Object.assign({}, set.eyes) });
     const flip = (from, to) => {
@@ -106,8 +106,8 @@
   /**
    * 外形を等角度の半径に測り直す。
    * 原点から角度ごとに線を伸ばし、輪郭と交わる点までの距離を半径とする。
-   * 原点は呼び出し側で決める（SVG / DXF は読み込み時に箱の中心へ移している。VCA は元の基準点のまま）。
-   * 1 本の線が輪郭と 2 回以上交わる（内側にえぐれた形）ときは、いちばん外側を使い、件数を返す。
+   * 原点は呼び出し側で決める(SVG / DXF は読み込み時に箱の中心へ移している。VCA は元の基準点のまま)。
+   * 1 本の線が輪郭と 2 回以上交わる(内側にえぐれた形)ときは、いちばん外側を使い、件数を返す。
    * @returns {{radii: number[], multi: number, miss: number}} radii は mm
    */
   function resample(pts, n) {
@@ -122,7 +122,7 @@
         const den = dx * ey - dy * ex;
         if (Math.abs(den) < 1e-12) continue;
         const t = (p.x * ey - p.y * ex) / den;   // 線の上の距離
-        const u = (p.x * dy - p.y * dx) / den;   // 辺の上の位置（0〜1）
+        const u = (p.x * dy - p.y * dx) / den;   // 辺の上の位置(0-1)
         // 頂点にちょうど当たる線を取りこぼさないよう、両端に少し余裕を持たせる
         if (t > 1e-9 && u >= -1e-9 && u <= 1 + 1e-9) hits.push(t);
       }
@@ -134,7 +134,7 @@
     return { radii, multi, miss };
   }
 
-  /** 等角度の半径（mm）を座標に戻す */
+  /** 等角度の半径(mm)を座標に戻す */
   function radiiToPoints(radii) {
     const n = radii.length;
     return radii.map((r, i) => {
@@ -144,7 +144,7 @@
   }
 
   // ---- VCA の読み込み ---------------------------------------------------------
-  /** VCA テキスト（.oma / .vca / 中身が VCA の .job / .ptn）を玉形セットにする */
+  /** VCA テキスト(.oma / .vca / 中身が VCA の .job / .ptn)を玉形セットにする */
   function fromVCA(text) {
     const d = VCA.parse(text);
     const set = {
@@ -160,12 +160,12 @@
       const pts = VCA.tracePoints(t).map(p => ({ x: p.x, y: p.y }));
       // 規格では半径の基準は箱の中心。ずれていても元の基準点のまま扱い、ずれ量だけ知らせる。
       const b = bbox(pts), off = Math.hypot(b.cx, b.cy);
-      if (off > 0.05) set.warnings.push(`${eye}：半径の基準点が箱の中心から ${off.toFixed(2)} mm ずれています（元の基準点のまま変換します）`);
+      if (off > 0.05) set.warnings.push(`${eye}: 半径の基準点が箱の中心から ${off.toFixed(2)} mm ずれています(元の基準点のまま変換します)`);
       set.eyes[eye] = { pts, n: t.radii.length, mode: t.mode, fmt: t.fmt, kind: t.kind };
       if (!set.object && /^[FPD]$/i.test(t.fields[4] || '')) set.object = t.fields[4].toUpperCase();
     }
-    if (!set.eyes.R && !set.eyes.L) set.errors.push('玉形（TRCFMT と R）が見つかりません');
-    // 穴あけ：箱中心基準（C）の穴だけを表示と SVG・DXF に使う（VCA には元のレコードをそのまま書き出す）
+    if (!set.eyes.R && !set.eyes.L) set.errors.push('玉形(TRCFMT と R)が見つかりません');
+    // 穴あけ: 箱中心基準(C)の穴だけを表示と SVG・DXF に使う(VCA には元のレコードをそのまま書き出す)
     const dr = VCA.drillFeatures(d);
     if (dr.features.length) {
       set.holes = { R: [], L: [] };
@@ -181,10 +181,10 @@
     return set;
   }
 
-  // ---- 輪郭の整理（SVG / DXF 共通） --------------------------------------------
+  // ---- 輪郭の整理(SVG / DXF 共通) --------------------------------------------
   /**
    * 開いた線分の列をつないで閉じた輪郭を作る。
-   * @param pieces [{pts, closed, src?}]（src は読み込み元の図形の情報。つないだ輪郭は最初の線のものを使う）
+   * @param pieces [{pts, closed, src?}](src は読み込み元の図形の情報。つないだ輪郭は最初の線のものを使う)
    * @param tol    つなぐときの許容距離
    * @returns {{closed: [{pts, src}], openLeft: number}}
    */
@@ -220,16 +220,16 @@
     return pts.length > 1 && dist(pts[0], pts[pts.length - 1]) <= tol ? pts.slice(0, -1) : pts;
   }
 
-  // ---- 輪郭の役割（右眼・左眼・穴・使わない） ------------------------------------
+  // ---- 輪郭の役割(右眼・左眼・穴・使わない) ------------------------------------
   /*
    * SVG / DXF は CAD や描画のデータなので、どの線が玉形でどの線が穴かは書かれていない。
-   * 閉じた輪郭に番号を付けて一覧にし、それぞれに役割（'R'・'L'・'hole'・'none'）を割り当てる。
+   * 閉じた輪郭に番号を付けて一覧にし、それぞれに役割('R'・'L'・'hole'・'none')を割り当てる。
    * 既定の割り当ては autoRoles が決め、画面で変えられる。
    */
   const ROLES = ['R', 'L', 'hole', 'none'];
-  const HOLE_MAX = 8;   // 穴とみなす輪郭の大きさの上限（mm、外接箱の長辺）
+  const HOLE_MAX = 8;   // 穴とみなす輪郭の大きさの上限(mm、外接箱の長辺)
 
-  /** 図形の名前（SVG の id・レイヤー名、DXF のレイヤー名）から役割を読み取る */
+  /** 図形の名前(SVG の id・レイヤー名、DXF のレイヤー名)から役割を読み取る */
   function roleHint(name) {
     const s = String(name || '');
     if (/hole|drill|穴/i.test(s)) return 'hole';
@@ -250,10 +250,10 @@
 
   /**
    * 既定の役割を決める。
-   * 1. 名前に右眼・左眼の手がかり（eye-R、レイヤー L など）があれば、それに従う。
+   * 1. 名前に右眼・左眼の手がかり(eye-R、レイヤー L など)があれば、それに従う。
    * 2. 無ければ、いちばん大きい輪郭を玉形とし、同じくらいの大きさで重ならない輪郭がもう 1 つあれば両眼とする
-   *    （正面視で左にあるほうが右眼）。
-   * 玉形の内側にある小さい輪郭（長辺 8 mm 以下）は穴、それ以外は使わない。
+   *    (正面視で左にあるほうが右眼)。
+   * 玉形の内側にある小さい輪郭(長辺 8 mm 以下)は穴、それ以外は使わない。
    * @param contours 面積の大きい順に並べた [{pts, b, a, src}]
    */
   function autoRoles(contours, singleEye) {
@@ -266,7 +266,7 @@
         if (i >= 0) roles[i] = e;
       }
     } else if (contours.length) {
-      // 自分の 1 割以上の大きさの輪郭を内側に持つ輪郭（図面の枠など）は、玉形の候補にしない
+      // 自分の 1 割以上の大きさの輪郭を内側に持つ輪郭(図面の枠など)は、玉形の候補にしない
       const encloses = (c, d) => d !== c && d.a >= c.a * 0.1 && d.b.x0 >= c.b.x0 && d.b.x1 <= c.b.x1 &&
         d.b.y0 >= c.b.y0 && d.b.y1 <= c.b.y1 && inside(c.pts, { x: d.b.cx, y: d.b.cy });
       const cand = contours.map((c, i) => i).filter(i => !contours.some(d => encloses(contours[i], d)));
@@ -289,8 +289,8 @@
   }
 
   /**
-   * 輪郭を外側へ d mm 広げる（各点を法線の方向に動かす）。
-   * フレームの内側の見える線から、溝の底（加工機が測る形）を求めるのに使う。点は密であること。
+   * 輪郭を外側へ d mm 広げる(各点を法線の方向に動かす)。
+   * フレームの内側の見える線から、溝の底(加工機が測る形)を求めるのに使う。点は密であること。
    */
   function offsetOutline(pts, d) {
     const ccw = area(pts) > 0, n = pts.length;
@@ -303,7 +303,7 @@
     });
   }
 
-  /** 辺の長さが step 以下になるよう点を足す（角の多い図形を広げる前に使う） */
+  /** 辺の長さが step 以下になるよう点を足す(角の多い図形を広げる前に使う) */
   function densify(pts, step) {
     const out = [];
     pts.forEach((p, i) => {
@@ -314,9 +314,9 @@
   }
 
   /**
-   * 穴の輪郭を、丸穴か長穴に当てはめる（主軸の向きに測る）。
-   * 長さと幅の比が 1.15 未満なら丸穴（直径は長さと幅の平均）、それ以上なら長穴（始点・終点は両端の円の中心、直径は幅）。
-   * @returns {{x, y, diameter, xEnd?, yEnd?}}（座標は pts と同じ）
+   * 穴の輪郭を、丸穴か長穴に当てはめる(主軸の向きに測る)。
+   * 長さと幅の比が 1.15 未満なら丸穴(直径は長さと幅の平均)、それ以上なら長穴(始点・終点は両端の円の中心、直径は幅)。
+   * @returns {{x, y, diameter, xEnd?, yEnd?}}(座標は pts と同じ)
    */
   function fitHole(pts) {
     let mx = 0, my = 0;
@@ -337,14 +337,14 @@
     return { x: cx - ux * h, y: cy - uy * h, diameter: wid, xEnd: cx + ux * h, yEnd: cy + uy * h };
   }
 
-  /** 穴（drillFeatures と同じ形。座標は箱中心基準）の輪郭を点列にする */
+  /** 穴(drillFeatures と同じ形。座標は箱中心基準)の輪郭を点列にする */
   function holeOutline(f) {
     const d = f.diameter > 0 ? f.diameter : 1, r = d / 2;
     const hasEnd = Number.isFinite(f.xEnd) && Number.isFinite(f.yEnd);
     if (f.featureType === 2 && hasEnd) {
       return [{ x: f.x, y: f.y }, { x: f.xEnd, y: f.y }, { x: f.xEnd, y: f.yEnd }, { x: f.x, y: f.yEnd }];
     }
-    // 円弧を 5° ごとの点にする（sweep はラジアン）
+    // 円弧を 5° ごとの点にする(sweep はラジアン)
     const arc = (cx, cy, a0, sweep) => {
       const k = Math.round(sweep / (Math.PI / 36)), pts = [];
       for (let j = 0; j <= k; j++) { const t = a0 + (sweep * j) / k; pts.push({ x: cx + r * Math.cos(t), y: cy + r * Math.sin(t) }); }
@@ -355,14 +355,14 @@
     return arc(f.xEnd, f.yEnd, a - Math.PI / 2, Math.PI).concat(arc(f.x, f.y, a + Math.PI / 2, Math.PI));
   }
 
-  // 線の意味 → TRCFMT の対象（F フレーム／P 型板／D デモレンズ）
+  // 線の意味 → TRCFMT の対象(F フレーム / P 型板 / D デモレンズ)
   const LINE_KINDS = { groove: 'F', inner: 'F', pattern: 'P', demo: 'D' };
 
   /**
    * 輪郭と役割から玉形セットを組み立てる。
    * @param contours 面積の大きい順に並べた [{pts, b, a, src}]
-   * @param roles    輪郭ごとの役割（'R'・'L'・'hole'・'none'）
-   * @param opts     {line?: 'groove'|'inner'|'pattern'|'demo', grooveDepth?: number（mm、line が inner のとき）}
+   * @param roles    輪郭ごとの役割('R'・'L'・'hole'・'none')
+   * @param opts     {line?: 'groove'|'inner'|'pattern'|'demo', grooveDepth?: number(mm、line が inner のとき)}
    */
   function assemble(contours, roles, opts) {
     opts = opts || {};
@@ -387,23 +387,23 @@
       if (raw.R.b.cx > raw.L.b.cx) set.warnings.push('右眼の輪郭が左眼の輪郭より右にあります。正面から見た図では、右眼は左側です');
       if (set.dbl < 0) set.warnings.push('右眼と左眼の輪郭が重なっています。DBL を確かめてください');
     }
-    // 穴：中心を含む玉形の眼に割り当て、その眼の箱中心からの位置にする（DRILLE の基準 C）
+    // 穴: 中心を含む玉形の眼に割り当て、その眼の箱中心からの位置にする(DRILLE の基準 C)
     roles.forEach((r, i) => {
       if (r !== 'hole') return;
       const c = contours[i], fit = fitHole(c.pts), at = { x: c.b.cx, y: c.b.cy };
       const eyes = EYES.filter(e => raw[e]);
-      if (!eyes.length) { set.warnings.push(`穴 ${i + 1} 番：玉形が無いので使いません`); return; }
+      if (!eyes.length) { set.warnings.push(`穴 ${i + 1} 番: 玉形が無いので使いません`); return; }
       let eye = eyes.find(e => inside(raw[e].pts, at));
       if (!eye) {
         eye = eyes.reduce((s, t) => (dist(at, { x: raw[t].b.cx, y: raw[t].b.cy }) < dist(at, { x: raw[s].b.cx, y: raw[s].b.cy }) ? t : s));
-        set.warnings.push(`穴 ${i + 1} 番：中心が玉形の外にあります。近いほうの${eye === 'R' ? '右眼' : '左眼'}の穴として扱います`);
+        set.warnings.push(`穴 ${i + 1} 番: 中心が玉形の外にあります。近いほうの${eye === 'R' ? '右眼' : '左眼'}の穴として扱います`);
       }
       const o = raw[eye].b, f = { eye, origin: 'C', contour: i + 1, x: fit.x - o.cx, y: fit.y - o.cy, diameter: fit.diameter };
       if (fit.xEnd !== undefined) { f.xEnd = fit.xEnd - o.cx; f.yEnd = fit.yEnd - o.cy; }
       set.holes[eye].push(f);
     });
     const unused = roles.filter(r => r === 'none').length;
-    if (unused) set.warnings.push(`使わない輪郭が ${unused} 個あります（「輪郭の割り当て」で選べます）`);
+    if (unused) set.warnings.push(`使わない輪郭が ${unused} 個あります(「輪郭の割り当て」で選べます)`);
     if (!set.eyes.R && !set.eyes.L) set.errors.push(contours.length ? '右眼・左眼に割り当てた輪郭がありません' : '閉じた輪郭が見つかりません');
     return set;
   }
@@ -412,9 +412,9 @@
   const DXF_UNITS = { 1: 25.4, 2: 304.8, 4: 1, 5: 10, 6: 1000, 8: 0.0000254, 9: 0.0254, 10: 914.4, 13: 0.001, 14: 100 };
 
   /**
-   * DXF（ASCII）から外形を読み込む。
-   * 対応: LWPOLYLINE・POLYLINE（ふくらみ付きの円弧も）・LINE・ARC・CIRCLE・ELLIPSE・SPLINE。
-   * @param opts {scale?: number（1 単位あたりの mm。省略時は $INSUNITS、なければ 1）, singleEye?: 'R'|'L'}
+   * DXF(ASCII)から外形を読み込む。
+   * 対応: LWPOLYLINE・POLYLINE(ふくらみ付きの円弧も)・LINE・ARC・CIRCLE・ELLIPSE・SPLINE。
+   * @param opts {scale?: number(1 単位あたりの mm。省略時は $INSUNITS、なければ 1), singleEye?: 'R'|'L'}
    */
   function fromDXF(text, opts) {
     opts = opts || {};
@@ -426,7 +426,7 @@
       pairs.push([code, lines[i + 1].trim()]);
     }
 
-    // 単位（HEADER の $INSUNITS）
+    // 単位(HEADER の $INSUNITS)
     let unitScale = null, unitNote = '';
     for (let i = 0; i < pairs.length; i++) {
       if (pairs[i][0] === 9 && pairs[i][1] === '$INSUNITS' && pairs[i + 1]) {
@@ -456,7 +456,7 @@
     const num = (e, code, def) => { const f = e.g.find(p => p[0] === code); return f ? parseFloat(f[1]) : def; };
     const all = (e, code) => e.g.filter(p => p[0] === code).map(p => parseFloat(p[1]));
     const skipped = {};
-    // 図形の種類とレイヤー名（一覧の表示と、役割の手がかりに使う）
+    // 図形の種類とレイヤー名(一覧の表示と、役割の手がかりに使う)
     const srcOf = e => { const layer = (e.g.find(p => p[0] === 8) || [])[1] || '0'; return { label: `${e.type}・レイヤー ${layer}`, hint: layer }; };
 
     for (let i = 0; i < ents.length; i++) {
@@ -475,7 +475,7 @@
         }
         case 'POLYLINE': {
           const flags = num(e, 70, 0), verts = [];
-          if (flags & (16 | 64)) { skipped['POLYLINE（メッシュ）'] = (skipped['POLYLINE（メッシュ）'] || 0) + 1; }
+          if (flags & (16 | 64)) { skipped['POLYLINE(メッシュ)'] = (skipped['POLYLINE(メッシュ)'] || 0) + 1; }
           while (ents[i + 1] && ents[i + 1].type === 'VERTEX') {
             const v = ents[++i];
             verts.push({ x: num(v, 10, 0), y: num(v, 20, 0), b: num(v, 42, 0) });
@@ -523,7 +523,7 @@
           break;
         }
         case 'INSERT':
-          warnings.push('ブロック参照（INSERT）の中の図形は読み込みません。図形を分解してから保存してください');
+          warnings.push('ブロック参照(INSERT)の中の図形は読み込みません。図形を分解してから保存してください');
           break;
         default:
           skipped[e.type] = (skipped[e.type] || 0) + 1;
@@ -531,13 +531,13 @@
       for (let k = before; k < pieces.length; k++) pieces[k].src = srcOf(e);
     }
     const sk = Object.keys(skipped).filter(k => !/^(TEXT|MTEXT|DIMENSION|POINT|HATCH|LEADER|VIEWPORT)$/.test(k));
-    if (sk.length) warnings.push('読み込まなかった図形：' + sk.map(k => `${k} ×${skipped[k]}`).join('、'));
+    if (sk.length) warnings.push('読み込まなかった図形: ' + sk.map(k => `${k} ×${skipped[k]}`).join('、'));
 
     const scaled = pieces.map(p => ({ closed: p.closed, src: p.src, pts: p.pts.map(q => ({ x: q.x * unitScale, y: q.y * unitScale })) }));
     return finishContours(scaled, opts, warnings, { unitScale, unitNote });
   }
 
-  /** ふくらみ（bulge）付きの頂点列を点列にする */
+  /** ふくらみ(bulge)付きの頂点列を点列にする */
   function bulgePolyline(verts, closed) {
     const pts = [];
     const n = verts.length;
@@ -558,7 +558,7 @@
     return pts;
   }
 
-  /** 円弧を点列にする（sweep は反時計回りが正、ラジアン） */
+  /** 円弧を点列にする(sweep は反時計回りが正、ラジアン) */
   function arcPoints(cx, cy, r, a0, sweep) {
     const steps = Math.max(8, Math.ceil((Math.abs(sweep) / (2 * Math.PI)) * 720)), pts = [];
     for (let k = 0; k <= steps; k++) {
@@ -568,7 +568,7 @@
     return pts;
   }
 
-  /** SPLINE（NURBS）を点列にする。ノットがないときは通過点（11/21）か制御点をそのままつなぐ。 */
+  /** SPLINE(NURBS)を点列にする。ノットがないときは通過点(11/21)か制御点をそのままつなぐ。 */
   function splinePoints(e, all, num) {
     const deg = num(e, 71, 3), knots = all(e, 40), weights = all(e, 41);
     const cx = all(e, 10), cy = all(e, 20), fx = all(e, 11), fy = all(e, 21);
@@ -603,9 +603,9 @@
   }
 
   /**
-   * 読み込んだ線をつないで輪郭の一覧を作り、役割に従って玉形セットにする（SVG / DXF 共通の後半）。
+   * 読み込んだ線をつないで輪郭の一覧を作り、役割に従って玉形セットにする(SVG / DXF 共通の後半)。
    * opts.roles が輪郭の数と合っていればそれを使い、合わなければ autoRoles で決める。
-   * 返す玉形セットには、輪郭の一覧（contours）、使った役割（roles）、既定の役割（autoRoles）も入れる。
+   * 返す玉形セットには、輪郭の一覧(contours)、使った役割(roles)、既定の役割(autoRoles)も入れる。
    */
   function finishContours(pieces, opts, warnings, info) {
     const all = [].concat(...pieces.map(p => p.pts));
@@ -625,7 +625,7 @@
     return Object.assign(set, info, { contours, roles, autoRoles: auto });
   }
 
-  // ---- SVG の読み込み（ブラウザのみ） ---------------------------------------------
+  // ---- SVG の読み込み(ブラウザのみ) ---------------------------------------------
   const MM_PER = { mm: 1, cm: 10, in: 25.4, pt: 25.4 / 72, pc: 25.4 / 6, px: 25.4 / 96, q: 0.25 };
 
   function parseLength(s) {
@@ -645,12 +645,12 @@
     };
     const s = pick(w, hasVb ? vb.width : 0) || pick(h, hasVb ? vb.height : 0);
     if (s) return { unitScale: s, unitNote: 'width / height と viewBox から単位を読み取りました' };
-    return { unitScale: 1, unitNote: '単位（mm など）の指定がないため、1 単位 = 1 mm とみなします' };
+    return { unitScale: 1, unitNote: '単位(mm など)の指定がないため、1 単位 = 1 mm とみなします' };
   }
 
   /**
    * SVG から外形を読み込む。曲線はブラウザの getPointAtLength で点列にする。
-   * @param opts {scale?: number（1 単位あたりの mm）, singleEye?: 'R'|'L', doc?: Document}
+   * @param opts {scale?: number(1 単位あたりの mm), singleEye?: 'R'|'L', doc?: Document}
    */
   function fromSVG(text, opts) {
     opts = opts || {};
@@ -681,7 +681,7 @@
         const steps = Math.min(40000, Math.ceil(total / step));
         const tag = el.nodeName.toLowerCase();
         const shapeClosed = /^(polygon|rect|circle|ellipse)$/.test(tag);
-        // 要素と親のグループの id・レイヤー名（Inkscape の inkscape:label）。一覧の表示と、役割の手がかりに使う
+        // 要素と親のグループの id・レイヤー名(Inkscape の inkscape:label)。一覧の表示と、役割の手がかりに使う
         const names = [];
         for (let n = el; n && n !== svg; n = n.parentNode) {
           const nm = n.getAttribute && (n.getAttribute('data-eye') || n.getAttribute('id') || n.getAttribute('inkscape:label'));
@@ -697,7 +697,7 @@
           let p = el.getPointAtLength((total * i) / steps);
           if (m) p = { x: m.a * p.x + m.c * p.y + m.e, y: m.b * p.x + m.d * p.y + m.f };
           const q = { x: p.x * k, y: -p.y * k };   // SVG は y が下向きなので反転する
-          // サブパスの切れ目（移動）では点が飛ぶので、そこで分ける
+          // サブパスの切れ目(移動)では点が飛ぶので、そこで分ける
           if (prev && dist(prev, q) > (total / steps) * k * 4 + 1e-6) flush(false);
           pts.push(q); prev = q;
         }
@@ -714,8 +714,8 @@
   const f2 = v => (Math.round(v * 100) / 100).toFixed(2);
 
   /**
-   * 両眼を並べたときの各眼の配置（正面視。右眼が左側）。dbl は鼻幅（mm）。
-   * 各眼の箱中心を (dx, 0) に置く。holes は穴の輪郭（箱中心基準の穴を同じだけ動かしたもの）。
+   * 両眼を並べたときの各眼の配置(正面視。右眼が左側)。dbl は鼻幅(mm)。
+   * 各眼の箱中心を (dx, 0) に置く。holes は穴の輪郭(箱中心基準の穴を同じだけ動かしたもの)。
    */
   function layout(set, dbl) {
     const out = [];
@@ -738,8 +738,8 @@
   }
 
   /**
-   * SVG として書き出す（単位 mm）。
-   * @param opts {dbl?: number, title?: string, preview?: boolean（画面表示用の補助線を付ける）}
+   * SVG として書き出す(単位 mm)。
+   * @param opts {dbl?: number, title?: string, preview?: boolean(画面表示用の補助線を付ける)}
    */
   function toSVG(set, opts) {
     opts = opts || {};
@@ -756,7 +756,7 @@
       if (opts.preview) {
         body += `    <rect class="box" x="${f3(eb.x0)}" y="${f3(-eb.y1)}" width="${f3(eb.w)}" height="${f3(eb.h)}"/>\n`;
         body += `    <path class="axis" d="M${f3(eb.cx - 3)} ${f3(-eb.cy)} H${f3(eb.cx + 3)} M${f3(eb.cx)} ${f3(-eb.cy - 3)} V${f3(-eb.cy + 3)}"/>\n`;
-        body += `    <text class="label" x="${f3(eb.cx)}" y="${f3(-eb.y0 + 2.2)}">${it.eye === 'R' ? 'R（右眼）' : 'L（左眼）'}</text>\n`;
+        body += `    <text class="label" x="${f3(eb.cx)}" y="${f3(-eb.y0 + 2.2)}">${it.eye === 'R' ? 'R(右眼)' : 'L(左眼)'}</text>\n`;
       }
       const stroke = opts.preview ? '' : ' fill="none" stroke="#000" stroke-width="0.1"';
       body += `    <path class="outline" d="${path(it.pts)}"${stroke}/>\n`;
@@ -779,7 +779,7 @@
       body + '</svg>\n';
   }
 
-  /** DXF（R12 ASCII、単位 mm）として書き出す。眼ごとにレイヤー R / L に分け、穴はレイヤー HOLE に描く。 */
+  /** DXF(R12 ASCII、単位 mm)として書き出す。眼ごとにレイヤー R / L に分け、穴はレイヤー HOLE に描く。 */
   function toDXF(set, opts) {
     opts = opts || {};
     const items = layout(set, opts.dbl);
@@ -813,21 +813,21 @@
     return out.join('\r\n') + '\r\n';
   }
 
-  // VCA に書き出すときに、元のファイルから引き継がないレコード（このツールが計算し直すもの）
+  // VCA に書き出すときに、元のファイルから引き継がないレコード(このツールが計算し直すもの)
   const REWRITTEN = new Set(['REQ', 'ANS', 'JOB', 'DBL', 'HBOX', 'VBOX', 'CIRC', 'CRC', 'STATUS']);
 
   /**
-   * VCA テキスト（REQ=FIL のファイル形式、形式 1・等角度）として書き出す。
-   * @param opts {n: 点数, job?: string, dbl?: number, keepRecords?: boolean（元の VCA のほかのレコードを引き継ぐ）}
-   * @returns {{text: string, warnings: string[], dims: object}} dims は眼ごとの HBOX・VBOX・周長（mm）
+   * VCA テキスト(REQ=FIL のファイル形式、形式 1・等角度)として書き出す。
+   * @param opts {n: 点数, job?: string, dbl?: number, keepRecords?: boolean(元の VCA のほかのレコードを引き継ぐ)}
+   * @returns {{text: string, warnings: string[], dims: object}} dims は眼ごとの HBOX・VBOX・周長(mm)
    */
   function toVCA(set, opts) {
     opts = opts || {};
-    // 点数の下限は規格（DCS v3.14）に定められていないので、指定された点数をそのまま使う
+    // 点数の下限は規格(DCS v3.14)に定められていないので、指定された点数をそのまま使う
     const n = Math.round(opts.n || 400), warnings = [], lines = ['REQ=FIL'];
     if (opts.job) {
       lines.push('JOB=' + opts.job);
-      // JOB は limited 型で 12 文字まで（DCS v3.14。vca-guide の README 4 章）
+      // JOB は limited 型で 12 文字まで(DCS v3.14。vca-guide の README 4 章)
       if (String(opts.job).length > 12) warnings.push(`JOB 番号「${opts.job}」が 12 文字を超えています。規格では 12 文字までです`);
     }
     if (Number.isFinite(opts.dbl)) lines.push('DBL=' + f2(opts.dbl));
@@ -836,11 +836,11 @@
     for (const eye of EYES) {
       if (!set.eyes[eye]) continue;
       const r = resample(set.eyes[eye].pts, n);
-      // R レコードに書く値（1/100 mm の整数）に丸めてから寸法を計算し、HBOX などと半径データを一致させる
+      // R レコードに書く値(1/100 mm の整数)に丸めてから寸法を計算し、HBOX などと半径データを一致させる
       r.radii = r.radii.map(v => Math.max(0, Math.round(v * 100)) / 100);
       res[eye] = r;
-      if (r.multi) warnings.push(`${eye}：${n} 点中 ${r.multi} 点で輪郭と 2 回以上交わりました（内側にえぐれた形）。いちばん外側の輪郭で近似しています`);
-      if (r.miss) warnings.push(`${eye}：${r.miss} 点で輪郭と交わりませんでした。箱の中心が形の外側にあるため、半径で表せません（玉形として使えない形です）`);
+      if (r.multi) warnings.push(`${eye}: ${n} 点中 ${r.multi} 点で輪郭と 2 回以上交わりました(内側にえぐれた形)。いちばん外側の輪郭で近似しています`);
+      if (r.miss) warnings.push(`${eye}: ${r.miss} 点で輪郭と交わりませんでした。箱の中心が形の外側にあるため、半径で表せません(玉形として使えない形です)`);
     }
     const dims = {};
     for (const eye of EYES) if (res[eye]) dims[eye] = measure(radiiToPoints(res[eye].radii));
@@ -853,13 +853,13 @@
     }
     const kept = opts.keepRecords && set.records ? set.records.filter(r => !REWRITTEN.has(r.label)) : [];
     kept.forEach(r => lines.push(r.label + '=' + r.fields.join(';')));
-    // 穴あけ：元の VCA の DRILLE を引き継ぐときはそちらを使う。図面から作った穴は箱中心基準（C）で書く
+    // 穴あけ: 元の VCA の DRILLE を引き継ぐときはそちらを使う。図面から作った穴は箱中心基準(C)で書く
     const holes = set.holes ? EYES.filter(e => res[e]).flatMap(e => set.holes[e]) : [];
     if (holes.length && !kept.some(r => r.label === 'DRILLE' || r.label === 'DRILL')) {
       VCA.drillRecords(holes).forEach(r => lines.push(r[0] + '=' + r.slice(1).join(';')));
-      warnings.push(`穴 ${holes.length} 個を DRILLE（箱中心基準 C）で書きました。機器が箱中心基準の穴あけデータに対応しているか確かめてください`);
+      warnings.push(`穴 ${holes.length} 個を DRILLE(箱中心基準 C)で書きました。機器が箱中心基準の穴あけデータに対応しているか確かめてください`);
     }
-    if (set.hasSag) warnings.push('Z（サグ）データは出力に含めません');
+    if (set.hasSag) warnings.push('Z(サグ)データは出力に含めません');
     const object = /^[FPD]$/.test(set.object || '') ? set.object : 'F';
     for (const eye of EYES) {
       if (!res[eye]) continue;
@@ -872,36 +872,36 @@
 
   // ---- ファイル名 ---------------------------------------------------------------
   /**
-   * Nidek 機の USB メモリ用のファイル名を作る（拡張子を除く）。
-   * 取扱説明書（ICE 900）: 「銘柄名 - 番号」で、ハイフンを含めて最大 16 桁。
-   * 取扱説明書（ME-1000）: コードに入力できる英字は大文字だけ。そのため銘柄名は大文字にする。
-   * 取扱説明書（Me 1200、LEXCE）: 銘柄名は英字を 1 文字以上含み、ハイフンを含まない 12 文字まで。
+   * Nidek 機の USB メモリ用のファイル名を作る(拡張子を除く)。
+   * 取扱説明書(ICE 900): 「銘柄名 - 番号」で、ハイフンを含めて最大 16 桁。
+   * 取扱説明書(ME-1000): コードに入力できる英字は大文字だけ。そのため銘柄名は大文字にする。
+   * 取扱説明書(Me 1200、LEXCE): 銘柄名は英字を 1 文字以上含み、ハイフンを含まない 12 文字まで。
    * 銘柄名を付けないときは、英字もハイフンも含まない 16 桁の数字にする。
-   * OptiBoard の報告: 先頭を 0 で埋めて 16 桁にする（例 0000000000123456.ptn）。
+   * OptiBoard の報告: 先頭を 0 で埋めて 16 桁にする(例 0000000000123456.ptn)。
    * @returns {{name?: string, error?: string}}
    */
   const BRAND_MAX = 12;
   function deviceFileName(brand, number) {
     brand = String(brand || '').trim().toUpperCase();
     const digits = String(number || '').replace(/\D/g, '');
-    if (!digits) return { error: '番号を入力してください（数字）' };
+    if (!digits) return { error: '番号を入力してください(数字)' };
     if (brand) {
-      if (!/^[A-Z0-9]+$/.test(brand)) return { error: '銘柄名は半角英数字にしてください（ハイフンは使えません）' };
+      if (!/^[A-Z0-9]+$/.test(brand)) return { error: '銘柄名は半角英数字にしてください(ハイフンは使えません)' };
       if (!/[A-Z]/.test(brand)) return { error: '銘柄名には英字を 1 文字以上入れてください' };
       if (brand.length > BRAND_MAX) return { error: `銘柄名は ${BRAND_MAX} 文字までです` };
       const room = 16 - brand.length - 1;
-      if (digits.length > room) return { error: `番号が長すぎます（この銘柄名では ${room} 桁まで）` };
+      if (digits.length > room) return { error: `番号が長すぎます(この銘柄名では ${room} 桁まで)` };
       return { name: `${brand}-${digits.padStart(room, '0')}` };
     }
     if (digits.length > 16) return { error: '番号は 16 桁までです' };
     return { name: digits.padStart(16, '0') };
   }
 
-  // Windows で使えない名前（拡張子が付いていても使えない）
+  // Windows で使えない名前(拡張子が付いていても使えない)
   const RESERVED = /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\..*)?$/i;
 
   /**
-   * JOB 番号などを、Windows や USB メモリ（FAT32）で使えるファイル名（拡張子を除く）にする。
+   * JOB 番号などを、Windows や USB メモリ(FAT32)で使えるファイル名(拡張子を除く)にする。
    * 使えない文字は「_」に、制御文字は取り除き、最後の「.」と空白を削る。予約された名前は先頭に「_」を付ける。
    */
   function safeFileStem(s, fallback) {

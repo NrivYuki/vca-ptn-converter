@@ -1,14 +1,14 @@
 /*
- * vca-records.js — DCS v3.14 附属書 A のラベル定義表（自動生成。手で編集しないこと）
+ * vca-records.js — DCS v3.14 附属書 A のラベル定義表(自動生成。手で編集しないこと)
  * 生成: python3 tools/build-records.py <規格書 PDF> > src/vca-records.js
  *
  * 各ラベルの値:
- *   k  値の並び  s=単一 c=左右 o=左右（省略可。単一値は両眼） l=可変長 m=決まった複数の欄 ?=表に記載なし
- *   t  データ型の記法（表のまま）   tb 掲載表（A.1 / A.1a / A.2 / A.27）
- *   p  1 なら複数回出現してよい（表の上付き P）
- *   m  Y=測定値接頭辞（INS/TOL/TOLV/CK/LD）付きのレコードもある / O=接頭辞付きでのみ使う
- *   v  1 なら TOLV レコードもある（表 A.1a）
- *   dep 廃止。値は後継ラベル     note 補足（typo:HBO = 表の誤植 HBO を HBOX として収録）
+ *   k  値の並び  s=単一 c=左右 o=左右(省略可。単一値は両眼) l=可変長 m=決まった複数の欄 ?=表に記載なし
+ *   t  データ型の記法(表のまま)   tb 掲載表(A.1 / A.1a / A.2 / A.27)
+ *   p  1 なら複数回出現してよい(表の上付き P)
+ *   m  Y=測定値接頭辞(INS/TOL/TOLV/CK/LD)付きのレコードもある / O=接頭辞付きでのみ使う
+ *   v  1 なら TOLV レコードもある(表 A.1a)
+ *   dep 廃止。値は後継ラベル     note 補足(typo:HBO = 表の誤植 HBO を HBOX として収録)
  * presets: 要求種別ごとのプリセットパケット [ラベル, 必須(1/0), 追加された版]
  * 規格の説明文は含めていません。意味は規格書の附属書 A を参照してください。
  */
@@ -24,7 +24,7 @@
 "FSP":{"datasets":["cribbing data","surface thickness data"],"records":[["AVAL",1,""],["BACK",1,""],["BLKB",1,""],["BLKD",1,""],["BLKTYP",1,""],["CPRVA",0,"3.02"],["CPRVM",0,"3.02"],["CRIB",1,""],["DIA",1,""],["ELLH",1,""],["FINCMP",0,""],["FLATA",1,""],["FLATB",1,""],["GAX",1,""],["GBASE",1,""],["GBASEX",1,""],["GCROS",1,""],["GCROSX",1,""],["GPRVA",1,""],["GPRVM",1,""],["GTHK",1,""],["IFRNT",1,""],["KPRVA",1,""],["KPRVM",1,""],["LAPBAS",1,""],["LAPBASX",1,""],["LAPCRS",1,""],["LAPCRSX",1,""],["LAPM",0,""],["LAPPRB",1,""],["LAPAX",0,""],["LDPATH",0,""],["SAGRD",0,""]],"table":"A.22"},
 "GEN":{"datasets":["CRIBFMT"],"records":[["AVAL",1,""],["BACK",1,""],["BCTHK",1,""],["BETHK",1,""],["BLKB",1,""],["BLKCMP",1,""],["BLKD",1,""],["BLKTYP",1,""],["CPRVA",0,"3.02"],["CPRVM",0,"3.02"],["CRIB",1,""],["DIA",1,""],["EECMP",0,""],["ELLH",1,""],["FLATA",1,""],["FLATB",1,""],["FRNT",1,""],["FTTHK",1,""],["GAX",1,""],["GBASE",1,""],["GBASEX",1,""],["GCROS",1,""],["GCROSX",1,""],["GPRVA",1,""],["GPRVM",1,""],["GTHK",1,""],["IFRNT",1,""],["KPRVA",1,""],["KPRVM",1,""],["LAPBAS",1,""],["LAPBASX",1,""],["LAPCRS",1,""],["LAPCRSX",1,""],["LAPM",0,""],["LAPPRB",1,""],["LENPRB",1,""],["LIND",1,""],["LMATTYPE",1,""],["LMATID",1,""],["LSIZ",1,""],["LTYP",1,""],["LTYPE",0,"3.03"],["OTHK",1,""],["PADTHK",0,""],["PIND",1,""],["PREEDGE",0,"3.02"],["RNGD",1,""],["RNGH",1,""],["RNGCMP",0,""],["RPRVA",0,""],["RPRVM",0,""],["SAGBD",1,""],["SAGCD",1,""],["SAGRD",1,""],["SBBCIN",1,""],["SBBCUP",1,""],["SBEV",1,""],["SBOCIN",0,""],["SBOCUP",0,""],["SPEED",1,""],["SVAL",1,""],["THKCMP",0,""],["TIND",1,""]],"table":"A.10"},
 "INF":{"datasets":[],"records":[["JOB",1,""],["STATUS",1,""]],"table":"A.13"},
-"INS":{"datasets":[],"records":[["INSADD",0,""],["INSAX",0,""],["INSCTHICK",0,""],["INSCYL",0,""],["INSPRVA",0,""],["INSPRVM",0,""],["INSSGOCIN",0,""],["INSSGUP",0,""],["INSSPH",0,""],["TOLADD",0,""],["TOLASPEC",0,""],["TOLAX",0,""],["TOLCTHICK",0,""],["TOLCYL",0,""],["TOLPRVA",0,""],["TOLPRVM",0,""],["TOLSGOCIN",0,""],["TOLSGOCUP",0,""],["TOLSHAPE",0,""],["TOLSPH",0,""]],"table":"A.16"},
+"INS":{"datasets":[],"records":[["INSADD",0,""],["INSAX",0,""],["INSCTHICK",0,""],["INSCYL",0,""],["INSPRVA",0,""],["INSPRVM",0,""],["INSSGOCIN",0,""],["INSSGOCUP",0,""],["INSSPH",0,""],["TOLADD",0,""],["TOLASPEC",0,""],["TOLAX",0,""],["TOLCTHICK",0,""],["TOLCYL",0,""],["TOLPRVA",0,""],["TOLPRVM",0,""],["TOLSGOCIN",0,""],["TOLSGOCUP",0,""],["TOLSHAPE",0,""],["TOLSPH",0,""]],"table":"A.16"},
 "LAP":{"datasets":[],"records":[["LAPBAS",0,""],["LAPBASX",0,""],["LAPBIN",0,""],["LAPCRS",0,""],["LAPCRSX",0,""],["LAPM",0,""],["TIND",0,""]],"table":"A.17"},
 "LDS":{"datasets":["tracing data","cribbing data","thickness data"],"records":[["LNAM",0,""],["SPH",0,""],["CYL",0,""],["AX",0,""],["ADD",0,""],["PRVM",0,""],["PRVA",0,""],["PIND",0,""],["MINCTR",0,""],["MINEDG",0,""],["ADJSPH",0,""],["ADJCYL",0,""],["ADJAX",0,""],["ADJPRVM",0,""],["ADJPRVA",0,""],["OPC",0,""],["LMATTYPE",0,""],["LMATID",0,""],["MBASE",0,""],["FRNT",0,""],["BACK",0,""],["DIA",0,""],["BCTHK",0,""],["BETHK",0,""],["LIND",0,""],["TIND",0,""],["CRIB",0,""],["ELLH",0,""],["FLATA",0,""],["FLATB",0,""],["PTOK",0,""],["PTPRVM",0,""],["PTPRVA",0,""],["BLKTYP",0,""],["BLKD",0,""],["RNGD",0,""],["RNGH",0,""],["HBOX",0,""],["VBOX",0,""],["FED",0,""],["FEDAX",0,""],["DBL",0,""],["MPD",0,""],["IPD",0,""],["FCSGIN",0,""],["FCSGUP",0,""],["ENGMASK",0,""],["SEGHT",0,""],["FTYP",0,""],["ETYP",0,""],["PANTO",0,""],["BVD",0,""],["ZTILT",0,""],["FCRV",0,""]],"table":"A.19"},
 "LMD":{"datasets":["tracing data"],"records":[["ADD",0,""],["ADD2",0,""],["AX",0,""],["BACK",0,""],["BCOCIN",0,""],["BCOCUP",0,""],["BCSGIN",0,""],["BCSGUP",0,""],["CTHICK",0,""],["CYL",0,""],["DBL",0,""],["DIA",0,""],["FBFCIN",0,""],["FBFCUP",0,""],["FBOCIN",0,""],["FBOCUP",0,""],["FBSGIN",0,""],["FBSGUP",0,""],["FRNT",0,""],["HBOX",0,""],["IPD",0,""],["LIND",0,""],["LTYP",0,""],["LTYPE",0,"3.03"],["NPD",0,""],["OCHT",0,""],["PRVA",0,""],["PRVM",0,""],["SEGHT",0,""],["SGOCIN",0,""],["SGOCUP",0,""],["SPH",0,""],["SWIDTH",0,""],["VBOX",0,""]],"table":"A.15"},
@@ -59,7 +59,7 @@
 "BCOCIN":{"k":"c","t":"± numeric;","tb":"A.1"},
 "BCOCUP":{"k":"c","t":"± numeric;","tb":"A.1"},
 "BCSGIN":{"k":"c","m":"Y","t":"± numeric;","tb":"A.1"},
-"BCSGUP":{"k":"c","t":"± numeric;","tb":"A.1"},
+"BCSGUP":{"k":"c","m":"Y","t":"± numeric;","tb":"A.1"},
 "BCTHK":{"k":"c","t":"numeric;","tb":"A.1"},
 "BETHK":{"k":"c","t":"numeric;","tb":"A.1"},
 "BEVANG":{"k":"c","t":"numeric;","tb":"A.1"},
@@ -114,11 +114,11 @@
 "CKHC":{"k":"o","t":"0|1[;]","tb":"A.27"},
 "CKINK":{"k":"o","t":"0|1[;]","tb":"A.27"},
 "CKPOLAR":{"k":"o","t":"0|1[;]","tb":"A.27"},
-"CKPRHI":{"k":"s","t":"0|1","tb":"A.27"},
+"CKPRHI":{"dep":"CKPRVHI","k":"s","t":"0|1","tb":"A.27"},
 "CKPRSM":{"k":"o","t":"0|1[;]","tb":"A.27"},
-"CKPRVI":{"k":"s","t":"0|1","tb":"A.27"},
+"CKPRVI":{"dep":"CKPRVVI","k":"s","t":"0|1","tb":"A.27"},
 "CKPWR":{"k":"o","t":"0|1[;]","tb":"A.27"},
-"CKTHK":{"k":"o","t":"0|1[;]","tb":"A.27"},
+"CKTHK":{"dep":"CKCTHICK","k":"o","t":"0|1[;]","tb":"A.27"},
 "CLAGE":{"k":"s","t":"numeric","tb":"A.1"},
 "CLAMP":{"k":"c","t":"integer;","tb":"A.1"},
 "CLDEYE":{"k":"s","t":"R|L|N","tb":"A.1"},
@@ -148,7 +148,7 @@
 "CRIBRNDOK":{"k":"s","t":"Integer","tb":"A.1"},
 "CSIZ":{"k":"o","t":"± numeric[;]","tb":"A.1"},
 "CTHICK":{"k":"c","m":"Y","t":"numeric;","tb":"A.1"},
-"CTHK":{"k":"c","m":"O","t":"numeric;","tb":"A.1"},
+"CTHK":{"dep":"CTHICK","k":"c","m":"O","t":"numeric;","tb":"A.1"},
 "CTHKA":{"k":"c","t":"numeric;","tb":"A.1"},
 "CTHKP":{"k":"c","t":"numeric;","tb":"A.1"},
 "CTHNA":{"k":"c","t":"numeric;","tb":"A.1"},
@@ -235,7 +235,7 @@
 "FCOL":{"k":"s","t":"text","tb":"A.1"},
 "FCRV":{"k":"o","t":"± numeric [;]","tb":"A.1"},
 "FCSGIN":{"k":"c","m":"Y","t":"± numeric;","tb":"A.1"},
-"FCSGUP":{"k":"c","t":"± numeric;","tb":"A.1"},
+"FCSGUP":{"k":"c","m":"Y","t":"± numeric;","tb":"A.1"},
 "FCYL":{"k":"c","m":"Y","t":"numeric;","tb":"A.1"},
 "FCYLL":{"k":"c","m":"Y","t":"numeric;","tb":"A.1"},
 "FDSRC":{"k":"s","t":"integer","tb":"A.1"},
@@ -459,7 +459,7 @@
 "SGAX":{"k":"c","m":"Y","t":"numeric;","tb":"A.1"},
 "SGCYL":{"k":"c","m":"Y","t":"numeric;","tb":"A.1"},
 "SGOCIN":{"k":"c","m":"Y","t":"± numeric;","tb":"A.1"},
-"SGOCUP":{"k":"c","t":"± numeric;","tb":"A.1"},
+"SGOCUP":{"k":"c","m":"Y","t":"± numeric;","tb":"A.1"},
 "SGSPH":{"k":"c","m":"Y","t":"numeric;","tb":"A.1"},
 "SHLFC":{"k":"c","t":"numeric;","tb":"A.1"},
 "SHLFFMT":{"k":"m","t":"integer;integer;E|U|C;R|L|B;F|B|E[;F| B]","tb":"A.2"},
