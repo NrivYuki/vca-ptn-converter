@@ -239,7 +239,7 @@
         <h2>設定</h2>
         <label class="f"><span>反対の眼</span><select id="fill"><option value="1">片眼だけなら、左右反転して作る</option><option value="0">作らない</option></select></label>
         <label class="f"><span>DBL(mm)</span><input id="dbl" type="number" step="0.01" min="0"><span class="h" id="dblhint"></span></label>
-        <label class="f"><span>JOB 番号</span><input id="job" type="text" maxlength="12"><span class="h">VCA の JOB は 12 文字まで(規格)。空欄ならファイルの JOB かファイル名を使います</span></label>
+        <label class="f"><span>JOB 番号</span><input id="job" type="text" maxlength="12"><span class="h">VCA の JOB は半角 12 文字まで(規格)。; = , * ? | は使えません。空欄ならファイルの JOB を使い、それも無ければ JOB=?(不明)を書きます</span></label>
         <label class="f"><span>VCA の点数</span><select id="npts"><option value="auto">自動</option><option>360</option><option>400</option><option>500</option><option>512</option><option>800</option><option>1000</option><option>1200</option><option>1440</option></select><span class="h" id="nhint"></span></label>
 
         <h3>JOB・PTN(Nidek 機の USB メモリ用)</h3>
@@ -471,11 +471,13 @@ tabs.forEach((b, i) => {
     $('#dbl').placeholder = Number.isFinite(set.dbl) ? set.dbl.toFixed(2) : '18.00';
     $('#dblhint').textContent = Number.isFinite(set.dbl)
       ? (isVca ? 'ファイルの DBL を使います' : '2 つの輪郭の間隔から求めました') : '不明なので、空欄なら 18 mm として並べます(VCA には書きません)';
-    const job = $('#job').value.trim() || set.job || stemOf(state.name);
-    $('#job').placeholder = set.job || stemOf(state.name);
+    // JOB が無ければ不明値 ?(表 A.2 の JOB)。保存するファイルの名前にはファイル名を使う
+    const job = $('#job').value.trim() || set.job || '';
+    const stem = job || stemOf(state.name);
+    $('#job').placeholder = set.job || '?';
     const n = $('#npts').value === 'auto' ? autoPoints(set) : +$('#npts').value;
     $('#nhint').textContent = $('#npts').value === 'auto' ? `${n} 点` : '';
-    if (!$('#number').value) $('#number').placeholder = (String(job).match(/\d+/g) || ['1']).join('').slice(-16);
+    if (!$('#number').value) $('#number').placeholder = (String(stem).match(/\d+/g) || ['1']).join('').slice(-16);
 
     // 知らせ
     const msgs = [];
@@ -486,14 +488,18 @@ tabs.forEach((b, i) => {
     showMsgs('#loadmsgs', msgs);
 
     // VCA の書き出し内容(注意を先に見せるため、ここで作っておく)
-    state.vca = hasShape ? Converter.toVCA(set, { n, job, dbl: num($('#dbl').value) ?? set.dbl, keepRecords: isVca }) : null;
+    state.vca = null; state.vcaError = '';
+    if (hasShape) {
+      try { state.vca = Converter.toVCA(set, { n, job, dbl: num($('#dbl').value) ?? set.dbl, keepRecords: isVca }); }
+      catch (e) { state.vcaError = e.message; }
+    }
 
     buildView(set, dbl, n);
     renderSpec(set, dbl, n);
     draw();
     renderStats(set, original);
     renderSum();
-    renderOutputs(hasShape, job, dbl);
+    renderOutputs(hasShape, stem, dbl);
   }
 
   // 輪郭の割り当ての表(SVG・DXF のとき)
@@ -553,7 +559,7 @@ tabs.forEach((b, i) => {
   /**
    * 眼ごとに、表示する位置と形を決める。
    * 箱の中心を各眼の中心に置き、両眼なら DBL の間隔で並べる(書き出す SVG・DXF と同じ並べ方)。
-   * 半径の基準点(VCA の原点)の位置も持っておき、読み取りと重ね表示に使う。
+   * 半径は、書き出す VCA と同じく箱の中心から測る(5.4.8)。読み込んだ VCA の原点の位置(srcOrigin)は、ずれの表示に使う。
    */
   function buildView(set, dbl, n) {
     const d = Number.isFinite(dbl) ? dbl : 18;
@@ -562,13 +568,13 @@ tabs.forEach((b, i) => {
       const o = set.eyes[e];
       if (!o) continue;
       const b = bboxOf(o.pts);
-      const r = Converter.resample(o.pts, n);
+      const r = Converter.resample(Converter.centered(o.pts), n);
       const radii = r.radii.map(v => Math.round(v * 100) / 100);
       const outline = o.pts.map(p => ({ x: p.x - b.cx, y: p.y - b.cy }));
       eyes.push({
         eye: e, b, radii, outline,
-        resampled: Converter.radiiToPoints(radii).map(p => ({ x: p.x - b.cx, y: p.y - b.cy })),
-        origin: { x: -b.cx, y: -b.cy },
+        resampled: Converter.radiiToPoints(radii),
+        origin: { x: 0, y: 0 }, srcOrigin: { x: -b.cx, y: -b.cy },
         fed: 2 * Math.max(...outline.map(p => Math.hypot(p.x, p.y))),
         circ: Converter.measure(o.pts).circ,
         offset: 0,
@@ -640,7 +646,7 @@ tabs.forEach((b, i) => {
       if (showGuide) {
         const s = px(8);
         el('path', { class: 'axis', d: `M${f3(e.offset - s)} 0 H${f3(e.offset + s)} M${f3(e.offset)} ${f3(-s)} V${f3(s)}`, 'stroke-width': px(1) }, g);
-        if (Math.hypot(e.origin.x, e.origin.y) > 0.05) el('circle', { class: 'dot', cx: f3(e.offset + e.origin.x), cy: f3(-e.origin.y), r: px(3) }, g);
+        if (Math.hypot(e.srcOrigin.x, e.srcOrigin.y) > 0.05) el('circle', { class: 'dot', cx: f3(e.offset + e.srcOrigin.x), cy: f3(-e.srcOrigin.y), r: px(3) }, g);
         const t = el('text', { class: 'lbl', x: f3(e.offset), y: f3(e.b.h / 2 + px(18)), 'text-anchor': 'middle', 'font-size': px(12) }, g);
         t.textContent = EYE_NAME[e.eye];
       }
@@ -782,7 +788,7 @@ tabs.forEach((b, i) => {
       ['VBOX', e => e.b.h.toFixed(2) + fileVal('VBOX', e.eye)],
       ['周長', e => e.circ.toFixed(2) + fileVal('CIRC', e.eye)],
       ['FED', e => e.fed.toFixed(2) + fileVal('FED', e.eye)],
-      ['基準点のずれ', e => Math.hypot(e.origin.x, e.origin.y).toFixed(2)],
+      ['基準点のずれ', e => Math.hypot(e.srcOrigin.x, e.srcOrigin.y).toFixed(2)],
       ['穴', e => String(e.holes.length)],
       ['書き出しの点数', () => String(v.n)],
     ];
@@ -806,18 +812,20 @@ tabs.forEach((b, i) => {
       svg: stem + '.svg', dxf: stem + '.dxf', vca: stem + '.oma',
       ptn: dev.name ? dev.name + ext('.ptn') : null, job: dev.name ? dev.name + ext('.job') : null,
     };
+    const keepOriginal = state.type === 'vca' && $('#keep').value === '1';
     state.names = names; state.dbl = dbl; state.job = job;
     for (const k of Object.keys(names)) {
       $('#n-' + k).textContent = names[k] || dev.error;
       const b = document.querySelector(`[data-out="${k}"]`);
-      b.disabled = !hasShape || !names[k];
+      const needsVca = k === 'vca' || ((k === 'ptn' || k === 'job') && !keepOriginal);
+      b.disabled = !hasShape || !names[k] || (needsVca && !state.vca);
       b.title = names[k] ? `${names[k]} を保存` : (dev.error || '');
     }
-    const keepOriginal = state.type === 'vca' && $('#keep').value === '1';
     $('#outText').value = state.vca ? state.vca.text : '';
     $('#outTextTitle').textContent = keepOriginal ? '書き出す VCA の中身(PTN・JOB は元のファイルのまま)' : '書き出す VCA・PTN・JOB の中身';
-    const msgs = [];
-    if (state.vca) state.vca.warnings.forEach(m => msgs.push(['w', 'VCA・PTN・JOB: ' + m]));
+    const msgs = [], head = keepOriginal ? 'VCA: ' : 'VCA・PTN・JOB: ';
+    if (state.vcaError) msgs.push(['e', head + state.vcaError + '。JOB 番号の欄で直してください']);
+    if (state.vca) state.vca.warnings.forEach(m => msgs.push(['w', head + m]));
     if (keepOriginal) msgs.push(['i', 'PTN・JOB は元のファイルの中身をそのまま使います(VCA の点数の設定は使いません)']);
     showMsgs('#outmsgs', msgs);
   }

@@ -1,0 +1,16 @@
+{
+  "name": "vca-ptn-converter",
+  "version": "0.0.0",
+  "private": true,
+  "description": "VCA・JOB・PTN・SVG・DXF の間で玉形を変換するブラウザツール",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node --test tests/conformance.test.js",
+    "trace": "node tools/trace.js",
+    "mutate": "node tools/mutate.js",
+    "ui": "node tests/ui/cdp.js index.html tests/ui/steps.js"
+  }
+}

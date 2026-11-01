@@ -106,7 +106,7 @@
   /**
    * 外形を等角度の半径に測り直す。
    * 原点から角度ごとに線を伸ばし、輪郭と交わる点までの距離を半径とする。
-   * 原点は呼び出し側で決める(SVG / DXF は読み込み時に箱の中心へ移している。VCA は元の基準点のまま)。
+   * 原点は呼び出し側で決める(toVCA は箱の中心に合わせてから渡す)。
    * 1 本の線が輪郭と 2 回以上交わる(内側にえぐれた形)ときは、いちばん外側を使い、件数を返す。
    * @returns {{radii: number[], multi: number, miss: number}} radii は mm
    */
@@ -158,16 +158,26 @@
       if (set.eyes[eye]) { set.warnings.push(`${eye} の玉形が複数あります。最初のものを使います`); continue; }
       if (t.sag) set.hasSag = true;
       const pts = VCA.tracePoints(t).map(p => ({ x: p.x, y: p.y }));
-      // 規格では半径の基準は箱の中心。ずれていても元の基準点のまま扱い、ずれ量だけ知らせる。
+      // 規格では半径の基準は箱の中心(5.4.8)。ずれていれば知らせ、VCA に書き出すときは箱の中心に合わせ直す(toVCA)
       const b = bbox(pts), off = Math.hypot(b.cx, b.cy);
-      if (off > 0.05) set.warnings.push(`${eye}: 半径の基準点が箱の中心から ${off.toFixed(2)} mm ずれています(元の基準点のまま変換します)`);
+      if (off > 0.05) set.warnings.push(`${eye}: 半径の基準点が箱の中心から ${off.toFixed(2)} mm ずれています(VCA には箱の中心に合わせ直して書き出します)`);
       set.eyes[eye] = { pts, n: t.radii.length, mode: t.mode, fmt: t.fmt, kind: t.kind };
       if (!set.object && /^[FPD]$/i.test(t.fields[4] || '')) set.object = t.fields[4].toUpperCase();
     }
     if (!set.eyes.R && !set.eyes.L) set.errors.push('玉形(TRCFMT と R)が見つかりません');
-    // 穴あけ: 箱中心基準(C)の穴だけを表示と SVG・DXF に使う(VCA には元のレコードをそのまま書き出す)
+    // 片眼の玉形で CIRC の左右が違えば、その差は反対の眼の大きさの変更(CSIZ)とみなす決まり(5.4.9.4)。
+    // このツールは反対の眼を左右反転で作るだけで大きさは変えないので、知らせる
+    const circ = ['R', 'L'].map(e => VCA.sideNumber(d.rec.CIRC, e));
+    if (!!set.eyes.R !== !!set.eyes.L && circ.every(Number.isFinite) && Math.abs(circ[0] - circ[1]) >= 0.005) {
+      set.warnings.push(`片眼の玉形で CIRC の左右が違います(${circ.map(v => v.toFixed(2)).join(' / ')})。規格では差を反対の眼の大きさの変更とみなしますが、このツールは反対の眼を左右反転で作るだけで、大きさは変えません`);
+    }
+    // 穴あけ: 箱中心基準(C)の穴だけを表示と SVG・DXF に使う(VCA には元のレコードをそのまま書き出す)。
+    // 基準が ? のものなど、規格(5.5)に反する DRILLE があれば、穴の位置を決められないので描かず、書き出しもしない
     const dr = VCA.drillFeatures(d);
-    if (dr.features.length) {
+    if (dr.errors && dr.errors.length) {
+      set.drillErrors = dr.errors.slice();
+      dr.errors.forEach(e => set.warnings.push(`${e}。穴は描かず、VCA にも書き出しません`));
+    } else if (dr.features.length) {
       set.holes = { R: [], L: [] };
       let other = 0;
       for (const f of dr.features) {
@@ -817,25 +827,56 @@
   const REWRITTEN = new Set(['REQ', 'ANS', 'JOB', 'DBL', 'HBOX', 'VBOX', 'CIRC', 'CRC', 'STATUS']);
 
   /**
+   * JOB の値(DCS の limited 型)。空か ? なら不明値 ?(表 A.2 の JOB)。
+   * limited は ASCII 12 文字まで(5.1.8.3)。文字は 32-127 で ; を除く(5.1.8.1。制御文字は 32 未満の文字、3.2.12)。
+   * 予約文字(表 1 の = , * ? |)は区切りなどの役割にだけ使う(5.1.7.2)ので値に入れない。
+   */
+  function jobValue(job) {
+    const s = String(job ?? '').trim();
+    if (s === '' || s === '?') return '?';
+    if (s.length > 12) throw new Error(`JOB は 12 文字までです(いま ${s.length} 文字)`);
+    if (/[^\x20-\x7f]/.test(s)) throw new Error('JOB には半角の英数字と記号だけを使えます');
+    const bad = s.match(/[;=,*?|]/);
+    if (bad) throw new Error(`JOB に「${bad[0]}」は使えません(区切りなどに使う文字です)`);
+    return s;
+  }
+
+  /**
+   * 値を ; で区切った「ラベル=値」の行にする。1 行に per 個ずつ並べ、80 文字(5.4.15.1)を超える行だけは
+   * 収まるところで分ける(半径が 100 mm 以上で、値が 5 けたになるときなど)
+   */
+  function splitLines(label, vals, per = 15) {
+    const lines = [];
+    for (let i = 0; i < vals.length; i += per) {
+      let cur = '';
+      for (const v of vals.slice(i, i + per)) {
+        const next = cur ? cur + ';' + v : label + '=' + v;
+        if (cur && next.length > 80) { lines.push(cur); cur = label + '=' + v; }
+        else cur = next;
+      }
+      lines.push(cur);
+    }
+    return lines;
+  }
+
+  /**
    * VCA テキスト(REQ=FIL のファイル形式、形式 1・等角度)として書き出す。
-   * @param opts {n: 点数, job?: string, dbl?: number, keepRecords?: boolean(元の VCA のほかのレコードを引き継ぐ)}
+   * @param opts {n: 点数, job?: string(空なら JOB=?。12 文字を超える・使えない文字があるときはエラー), dbl?: number,
+   *              keepRecords?: boolean(元の VCA のほかのレコードを引き継ぐ)}
    * @returns {{text: string, warnings: string[], dims: object}} dims は眼ごとの HBOX・VBOX・周長(mm)
    */
   function toVCA(set, opts) {
     opts = opts || {};
     // 点数の下限は規格(DCS v3.14)に定められていないので、指定された点数をそのまま使う
-    const n = Math.round(opts.n || 400), warnings = [], lines = ['REQ=FIL'];
-    if (opts.job) {
-      lines.push('JOB=' + opts.job);
-      // JOB は limited 型で 12 文字まで(DCS v3.14。vca-guide の README 4 章)
-      if (String(opts.job).length > 12) warnings.push(`JOB 番号「${opts.job}」が 12 文字を超えています。規格では 12 文字までです`);
-    }
+    // ファイルの 1 行目は REQ、ジョブのデータなので 2 行目は JOB(7.5.4)
+    const n = Math.round(opts.n || 400), warnings = [], lines = ['REQ=FIL', 'JOB=' + jobValue(opts.job)];
     if (Number.isFinite(opts.dbl)) lines.push('DBL=' + f2(opts.dbl));
 
     const res = {};
     for (const eye of EYES) {
       if (!set.eyes[eye]) continue;
-      const r = resample(set.eyes[eye].pts, n);
+      // 半径の基準は箱の中心(5.4.8)。VCA から読んだ玉形の基準点がずれていても、ここで合わせ直す
+      const r = resample(centered(set.eyes[eye].pts), n);
       // R レコードに書く値(1/100 mm の整数)に丸めてから寸法を計算し、HBOX などと半径データを一致させる
       r.radii = r.radii.map(v => Math.max(0, Math.round(v * 100)) / 100);
       res[eye] = r;
@@ -851,7 +892,19 @@
     if (Object.keys(dims).length) {
       lines.push('HBOX=' + chiral('hbox'), 'VBOX=' + chiral('vbox'), 'CIRC=' + chiral('circ'));
     }
-    const kept = opts.keepRecords && set.records ? set.records.filter(r => !REWRITTEN.has(r.label)) : [];
+    let kept = opts.keepRecords && set.records ? set.records.filter(r => !REWRITTEN.has(r.label)) : [];
+    // 値に ; を含むレコード(読み込みでは、引用符の中の ; を値として受け取る)は、規格では書けない(5.1.8.1)。
+    // そのまま書くと区切りと見分けられず値の数が変わるので、引き継がない
+    const semi = kept.filter(r => r.fields.some(f => String(f).includes(';')));
+    if (semi.length) {
+      kept = kept.filter(r => !semi.includes(r));
+      warnings.push(`値に「;」を含むレコード(${[...new Set(semi.map(r => r.label))].join('・')})は、規格では書けない(5.1.8.1)ので引き継ぎません`);
+    }
+    // 穴あけのレコードに誤りがあれば(基準が ? など)、誤った位置に穴をあけないよう引き継がない
+    if (set.drillErrors && kept.some(r => r.label === 'DRILLE')) {
+      kept = kept.filter(r => r.label !== 'DRILLE');
+      warnings.push('DRILLE に誤りがあるので、穴あけのレコードは引き継ぎません');
+    }
     kept.forEach(r => lines.push(r.label + '=' + r.fields.join(';')));
     // 穴あけ: 元の VCA の DRILLE を引き継ぐときはそちらを使う。図面から作った穴は箱中心基準(C)で書く
     const holes = set.holes ? EYES.filter(e => res[e]).flatMap(e => set.holes[e]) : [];
@@ -864,8 +917,8 @@
     for (const eye of EYES) {
       if (!res[eye]) continue;
       lines.push(`TRCFMT=1;${n};E;${eye};${object}`);
-      const rs = res[eye].radii.map(r => Math.round(r * 100));
-      for (let i = 0; i < rs.length; i += 15) lines.push('R=' + rs.slice(i, i + 15).join(';'));
+      lines.push(...splitLines('R', res[eye].radii.map(r => Math.round(r * 100))));
+      lines.push('ZFMT=0');   // サグ(Z)は書かない。サグの無い玉型では、それぞれの R の後に ZFMT=0 を置く(5.4.1)
     }
     return { text: lines.join('\r\n') + '\r\n', warnings, dims };
   }
@@ -917,7 +970,7 @@
   }
 
   return {
-    detect, binaryRatio, fromVCA, fromDXF, fromSVG, toSVG, toDXF, toVCA,
+    detect, binaryRatio, fromVCA, fromDXF, fromSVG, toSVG, toDXF, toVCA, jobValue,
     resample, radiiToPoints, measure, mirror, fillMirror, centered, deviceFileName, safeFileStem, chain,
     ROLES, roleHint, autoRoles, assemble, offsetOutline, fitHole, holeOutline,
   };
