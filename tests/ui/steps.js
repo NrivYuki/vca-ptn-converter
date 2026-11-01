@@ -106,4 +106,21 @@ module.exports = async (t) => {
     const r = await t.eval(`${JSON.stringify(svgs)}.map(s => { const x = Converter.fromSVG(s); return [Converter.detect(s, 'lens.svg'), x.contours ? x.contours.length : 0, (x.errors || []).join(' / ')]; })`);
     ok(r.every(([k, n]) => k === 'svg' && n > 0), '三面図の SVG(ヤゲン・溝・平)を SVG として読み、閉じた輪郭がある: ' + JSON.stringify(r));
   }
+
+  // 8. ファイルを置く(OS からのドラッグ)。読み込み欄の上でも、ページのほかの場所でも読む。形式は中身と拡張子で決める
+  const C = require('../../converter.js');
+  const both = fs.readFileSync(path.join(__dirname, '../../samples/frame-both.vca'), 'latin1');
+  const set0 = C.fromVCA(both);
+  const files = [['drop.vca', both, 'VCA テキスト'], ['DROP.PTN', both, 'VCA テキスト'], ['drop.job', both, 'VCA テキスト'],
+    ['drop.dxf', C.toDXF(set0, { dbl: 18 }), 'DXF'], ['drop.svg', Buffer.from(C.toSVG(set0, { dbl: 18 }), 'utf8'), 'SVG']];
+  for (const [name, body, kind] of files) {
+    for (const [where, tab] of [['#drop', 'load'], ['#outText', 'out']]) {
+      await t.eval(`document.getElementById('tab-${tab}').click()`);   // 置く場所が見えるタブを開く
+      await t.drop(where, [[name, body]]); await t.sleep(1000);
+      const info = await t.eval(`document.getElementById('srcinfo').textContent`);
+      const trc = ((await t.eval(`document.getElementById('outText').value`)).match(/^TRCFMT=1;/gm) || []).length;
+      ok(info === `${name}(${kind})` && trc === 2, `${where} に ${name} を置くと ${kind} として読み、両眼の VCA にする: ${info}・TRCFMT ${trc} 個`);
+      ok(!(await t.eval(`document.querySelector('[data-out=vca]').disabled`)), `${name} を置いたあと VCA を保存できる`);
+    }
+  }
 };

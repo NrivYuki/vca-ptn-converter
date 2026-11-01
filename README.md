@@ -110,7 +110,7 @@ npm run mutate
 
 VCA の読み書きそのもの(`vca-parser.js`)は、vca-guide のテストで確かめています。
 
-画面(書き出す VCA の JOB、誤りの知らせ、保存のボタン、引き継がないレコードの知らせ、SVG を通る組み合わせ、vca-lens-simulator の三面図の SVG の読み込み)は、Chrome をヘッドレスで動かして確かめます(Node.js 22 以上)。リポジトリのフォルダで実行し、画像は OS の一時フォルダの vca-ui-check に置きます。
+画面(書き出す VCA の JOB、誤りの知らせ、保存のボタン、引き継がないレコードの知らせ、SVG を通る組み合わせ、vca-lens-simulator の三面図の SVG の読み込み、VCA・PTN・JOB・DXF・SVG のファイルを読み込み欄と画面のほかの場所に置いたときの読み込み)は、Chrome をヘッドレスで動かして確かめます(Node.js 22 以上)。リポジトリのフォルダで実行し、画像は OS の一時フォルダの vca-ui-check に置きます。
 
 ```sh
 npm run ui

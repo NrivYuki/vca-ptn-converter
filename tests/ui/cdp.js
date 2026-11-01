@@ -3,7 +3,7 @@
 //   ページはファイルの場所(index.html など、今のフォルダからの相対でよい)か URL。
 //   画像を置くフォルダを省くと、OS の一時フォルダの vca-ui-check に置く。
 //   Chrome は決まった場所から探す。見つからないときは環境変数 CHROME で場所を指定する。
-//   steps.js は module.exports = async (t) => { ... } で、t.eval(expr) / t.shot(name) / t.sleep(ms) / t.log(...) を使う
+//   steps.js は module.exports = async (t) => { ... } で、t.eval(expr) / t.shot(name) / t.drop(selector, files) / t.sleep(ms) / t.log(...) を使う
 const { spawn } = require('child_process');
 const fs = require('fs');
 const os = require('os');
@@ -52,7 +52,13 @@ const problems = [];
     if (m.method === 'Runtime.consoleAPICalled' && ['error', 'warning'].includes(m.params.type)) problems.push('CONSOLE ' + m.params.type + ' ' + m.params.args.map(a => a.value ?? a.description).join(' '));
     if (m.method === 'Log.entryAdded' && m.params.entry.level === 'error' && !/GL Driver|favicon/.test(m.params.entry.text)) problems.push('LOG ' + m.params.entry.text + ' ' + (m.params.entry.url || ''));
   });
-  const send = (method, params = {}) => new Promise(r => { const i = ++id; wait.set(i, r); ws.send(JSON.stringify({ id: i, method, params })); });
+  // 応答が 60 秒来なければ失敗にする(ページが別のところへ移って止まったときなどに、待ち続けない)
+  const send = (method, params = {}) => new Promise((r, reject) => {
+    const i = ++id;
+    const timer = setTimeout(() => { wait.delete(i); reject(new Error(`${method} の応答が 60 秒ありません`)); }, 60000);
+    wait.set(i, m => { clearTimeout(timer); r(m); });
+    ws.send(JSON.stringify({ id: i, method, params }));
+  });
   await send('Runtime.enable'); await send('Log.enable'); await send('Page.enable');
   await send('Emulation.setDeviceMetricsOverride', { width: +W, height: +H, deviceScaleFactor: 1, mobile: +W < 768 });
   await send('Page.navigate', { url });
@@ -68,6 +74,18 @@ const problems = [];
     async shot(name) {
       const r = await send('Page.captureScreenshot', { format: 'png' });
       const f = path.join(outDir, name + '.png'); fs.writeFileSync(f, Buffer.from(r.result.data, 'base64')); return f;
+    },
+    // ファイルを OS からドラッグして、selector の要素の上に置く(Input.dispatchDragEvent)。files は [[名前, 中身]]。
+    // 中身(文字列は latin1、または Buffer)を画像を置くフォルダの下に書いてから置く
+    async drop(selector, files) {
+      const at = await t.eval(`(() => { const e = document.querySelector(${JSON.stringify(selector)}); e.scrollIntoView({ block: 'center' });
+        const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 ? [r.left + r.width / 2, r.top + r.height / 2] : null; })()`);
+      // 見えていない要素の上には置けない(外に落ちると、ブラウザがファイルを開いてページが移る)
+      if (!at) throw new Error(`${selector} が見えていないので、ファイルを置けません`);
+      const dir = fs.mkdtempSync(path.join(outDir, 'drop-'));
+      const paths = files.map(([name, body]) => { const p = path.join(dir, name); fs.writeFileSync(p, typeof body === 'string' ? Buffer.from(body, 'latin1') : body); return p; });
+      const data = { items: [], files: paths, dragOperationsMask: 1 };
+      for (const type of ['dragEnter', 'dragOver', 'drop']) await send('Input.dispatchDragEvent', { type, x: at[0], y: at[1], data });
     },
     async emulate(w, h, dark) {
       await send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: w < 768 });
