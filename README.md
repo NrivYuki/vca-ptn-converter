@@ -1,6 +1,6 @@
 # vca-ptn Converter
 
-眼鏡の玉形(レンズの外形)を、VCA(OMA / DCS)・JOB・PTN・SVG・DXF の間で変換するツールです。ブラウザで開くだけで動き、ファイルはどこにも送信しません。
+眼鏡の玉形(レンズの外形)を、VCA・JOB・PTN・SVG・DXF の間で変換するツールです。VCA は .vca で書き出します(読み込みは .oma・.dcs も受け付けます)。ブラウザで開くだけで動き、ファイルはどこにも送信しません。
 
 **公開ページ: ** https://nrivyuki.github.io/vca-ptn-converter/index.html
 
@@ -22,11 +22,12 @@
 |---|---|
 | VCA(.oma / .vca / .dcs)。形式 1・2・3・4、角度モード E・U・C | SVG(単位 mm) |
 | 中身が VCA のテキストになっている .job / .ptn | DXF(R12、単位 mm、眼ごとにレイヤー R / L、穴はレイヤー HOLE) |
-| SVG(曲線・transform・単位に対応) | VCA(REQ=FIL、形式 1、等角度、点数は 360-1440 から選べる) |
+| SVG(曲線・transform・単位に対応) | VCA(.vca。REQ=FIL、形式 1、等角度、点数は 360-1440 から選べる。自動なら、等角度の VCA は元の点数、図面は頂点の数が選べる点数と同じならその点数、ほかは 400) |
 | DXF(LWPOLYLINE・POLYLINE・LINE・ARC・CIRCLE・ELLIPSE・SPLINE) | PTN / JOB(VCA のテキストを、Nidek 機の USB メモリ用の 16 桁の名前にしたもの) |
 
 - 両眼の輪郭が並んだ SVG / DXF は、正面から見て左側を右眼として読み込み、間隔を DBL とします
 - 片眼しかないときは、反対の眼を左右反転して作れます(箱中心基準の穴も反転します)
+- SVG・DXF に書くのは、玉形・箱中心基準の穴・両眼の間隔(DBL)だけです。JOB・FCRV などほかのレコードは入らないので、VCA から SVG・DXF にして VCA に戻すと、それらは無くなります(JOB は `JOB=?`)。VCA を読み込んだときは、入らないレコードを「書き出し」のタブで知らせます
 
 ## SVG・DXF の輪郭の割り当て
 
@@ -55,7 +56,7 @@ SVG の直線だけの図形(`M`・`L`・`H`・`V`・`Z` だけの `path`、`pol
 | PTN / JOB | 「銘柄名-番号」(ハイフンを含めて 16 桁)か、番号だけ(16 桁)。足りない桁は番号の先頭を 0 で埋める(例: `S1-0000000152152.ptn`、`0000000000123456.ptn`) | ICE 900 の取扱説明書、OptiBoard、販売店の手順書 |
 | PTN / JOB | 銘柄名は半角英数字で、英字を 1 文字以上含む 12 文字まで(ハイフンは使えない)。英字は大文字にする | ME-1000・Me 1200・LEXCE の取扱説明書 |
 | PTN / JOB | 拡張子は小文字(`.ptn`)か大文字(`.PTN`)を選べる。USB メモリ(FAT32)は区別しない | 資料によって書き方が違うため |
-| SVG / DXF / VCA | JOB 番号(無ければ読み込んだファイルの名前)をファイル名にする。Windows で使えない文字(`\ / : * ? " < > \|`、空白)は `_` に、制御文字は削除、最後の `.` と空白は削る。予約された名前(`CON`、`NUL`、`COM1` など)は先頭に `_` を付ける | Windows のファイル名の決まり |
+| SVG / DXF / VCA | JOB 番号(無ければ読み込んだファイルの名前)をファイル名にし、拡張子は `.svg`・`.dxf`・`.vca` にする。Windows で使えない文字(`\ / : * ? " < > \|`、空白)は `_` に、制御文字は削除、最後の `.` と空白は削る。予約された名前(`CON`、`NUL`、`COM1` など)は先頭に `_` を付ける | Windows のファイル名の決まり |
 
 ## できないこと・注意
 
@@ -96,7 +97,7 @@ npm test
 
 読み込みと書き出しが規格の決まりを守るか(ファイルの 1・2 行目、JOB の文字、左右のレコード、TRCFMT と R の書式・向き・原点、引き継ぐレコード、DRILLE の誤りの扱い、形式 2 の規格の例など)を `tests/conformance.test.js` で確かめます。
 
-読み込める形式と書き出せる形式の組み合わせは、`tests/formats.test.js` ですべて通します。元のデータ(VCA の両眼・片眼・不等角度・形式 2・穴あり、それを DXF にしたもの、隣に vca-shape-maker があればその書き出し)ごとに、反対の眼を作る・作らない × 1 回目の書き出し(VCA・PTN・JOB・DXF)× 2 回目の書き出しで、読み直した眼・形・寸法・穴・JOB・DBL が変わらないこと、同じ形式で 2 回書くと中身が同じことを確かめます。SVG を通る組み合わせは、ブラウザが要るので画面の検査で確かめます。どの決まりをどのテストが確かめているかは [docs/conformance.md](docs/conformance.md) と [docs/conformance-tests.md](docs/conformance-tests.md) にあります。次のコマンドで突き合わせ、テストの無い決まりがあれば失敗します(GitHub Actions でも動かします)。
+読み込める形式と書き出せる形式の組み合わせは、`tests/formats.test.js` ですべて通します。元のデータ(VCA の両眼・片眼・不等角度・形式 2・穴あり、それを DXF にしたもの、隣に vca-shape-maker があればその書き出し)ごとに、反対の眼を作る・作らない × 1 回目の書き出し(VCA・PTN・JOB・DXF)× 2 回目の書き出しで、読み直した眼・形・寸法・穴・JOB・DBL が変わらないこと、同じ形式で 2 回書くと中身が同じことを確かめます。VCA の点数は、画面の「VCA の点数」の自動と同じ決め方です。.oma の名前のファイルを VCA として読むことも確かめます。SVG を通る組み合わせと、保存のボタンで保存する名前と中身(VCA → DXF を保存 → 読み込み直して VCA を保存、を含む)は、ブラウザが要るので画面の検査で確かめます。どの決まりをどのテストが確かめているかは [docs/conformance.md](docs/conformance.md) と [docs/conformance-tests.md](docs/conformance-tests.md) にあります。次のコマンドで突き合わせ、テストの無い決まりがあれば失敗します(GitHub Actions でも動かします)。
 
 ```sh
 node tools/trace.js --check
@@ -121,11 +122,11 @@ npm run ui
 | ファイル | 内容 |
 |---|---|
 | `_SAMPLE0001.vca` | 画面の「サンプル」で読み込むもの。両眼、1440 点(0.25° ごと)。鼻側と耳側の形が違うので、左右の向きを確かめやすい |
-| `frame-right.vca` / `frame-both.vca` / `frame-uneven.vca` | 以前の [vca-guide](https://github.com/NrivYuki/vca-guide) のサンプル(360 点・180 点)。今の vca-guide のサンプルとは玉形が違う |
+| `frame-right.vca` / `frame-both.vca` / `frame-uneven.vca` | [vca-guide](https://github.com/NrivYuki/vca-guide) のサンプルと同じもの。`_SAMPLE0001.vca` と同じ玉形を、360 点(右眼だけ・両眼)と不等角度の 180 点で表したもの |
 
 ## ライセンス
 
-[MIT License](LICENSE)。`vca-parser.js`・`vca-records.js` と `frame-*.vca` のサンプルは [vca-guide](https://github.com/NrivYuki/vca-guide)(MIT License)のものです(`frame-*.vca` は以前の版のもの)。
+[MIT License](LICENSE)。`vca-parser.js`・`vca-records.js` と `frame-*.vca` のサンプルは [vca-guide](https://github.com/NrivYuki/vca-guide)(MIT License)のものです。
 
 ## 免責
 

@@ -42,10 +42,10 @@ if (fs.existsSync(shapePath)) {
 for (const [k, v] of Object.entries(SOURCES)) if (k.startsWith('VCA')) SOURCES[k.replace(/^VCA/, 'DXF')] = C.toDXF(C.fromVCA(v), { dbl: 18 });
 
 const READ = { VCA: t => C.fromVCA(t), PTN: t => C.fromVCA(t), JOB: t => C.fromVCA(t), DXF: t => C.fromDXF(t) };
-const EXT = { VCA: 'oma', PTN: 'ptn', JOB: 'job', DXF: 'dxf' };
-// 点数は、等角度の VCA なら元の点の数のまま(点を減らすと、とがった角が削れて形が変わる)。
-// 不等角度の VCA と DXF は、点の角度が変わるので、元の点の数と 360 の多いほう
-const points = set => { const e = Object.values(set.eyes)[0]; return e.n && e.mode === 'E' ? e.n : Math.max(360, e.pts.length); };
+// 書き出す VCA の拡張子は .vca だけ。.oma は読み込みだけを受け付ける(下の「.oma の名前でも読む」)
+const EXT = { VCA: 'vca', PTN: 'ptn', JOB: 'job', DXF: 'dxf' };
+// 点数は、画面の「VCA の点数」の自動と同じ決め方(Converter.autoPoints)。画面で保存する流れをそのまま試す
+const points = set => C.autoPoints(set);
 const WRITE = {
   VCA: (set, job) => C.toVCA(set, { n: points(set), job, dbl: set.dbl, keepRecords: true }).text,
   DXF: (set) => C.toDXF(set, { dbl: set.dbl }),
@@ -109,4 +109,38 @@ test('左右反転して作った眼は、元の眼の左右反転(右上のへ�
     const r = radii(s, 'R'), l = radii(s, 'L');
     assert.ok(Math.abs(r[45] - 20) <= TOL && Math.abs(l[135] - 20) <= TOL && Math.abs(r[135] - 25) <= TOL, kind);
   }
+});
+
+test('.oma の名前でも読む(書き出しは .vca だけだが、読み込みは .oma・.dcs も受け付ける)', () => {
+  const text = SOURCES['VCA 両眼・丸穴と長穴(基準 C)'];
+  for (const name of ['x.oma', 'X.OMA', 'x.dcs', 'x.vca']) {
+    assert.equal(C.detect(text, name), 'vca', name);
+    same(C.fromVCA(text), read('VCA', text), name, { job: 'HOLE1' });
+  }
+});
+
+test('VCA の点数の自動: 等角度の VCA は元の点数、図面は頂点の数が選べる点数と同じならその点数、ほかは 400', () => {
+  assert.equal(C.autoPoints(read('VCA', SOURCES['VCA 両眼 1440 点(サンプル)'])), 1440);
+  assert.equal(C.autoPoints(read('VCA', SOURCES['VCA 両眼(サンプル)'])), 360);
+  assert.equal(C.autoPoints(read('VCA', SOURCES['VCA 形式 2(バイナリ)'])), 8);
+  assert.equal(C.autoPoints(read('VCA', SOURCES['VCA 不等角度(サンプル)'])), 400);
+  // このツールが VCA から書き出した DXF は、頂点が元の点そのもの
+  assert.equal(C.autoPoints(read('DXF', SOURCES['DXF 両眼 1440 点(サンプル)'])), 1440);
+  assert.equal(C.autoPoints(read('DXF', SOURCES['DXF 両眼(サンプル)'])), 360);
+  // 頂点が 8 つの図面は、選べる点数に無いので 400
+  assert.equal(C.autoPoints(read('DXF', SOURCES['DXF 形式 2(バイナリ)'])), 400);
+  for (const n of [360, 400, 500, 512, 800, 1000, 1200, 1440]) assert.ok(C.POINT_CHOICES.includes(n));
+});
+
+test('SVG・DXF に入らないレコードを数える(玉形・穴・両眼の間隔だけが図面に入る)', () => {
+  const two = read('VCA', SOURCES['VCA 両眼・丸穴と長穴(基準 C)']);
+  assert.deepEqual(C.drawingLosses(two), ['JOB']);
+  // 片眼なら DBL も入らない。JOB=? は失うものが無い
+  const one = read('VCA', ['REQ=FIL', 'JOB=?', 'DBL=18.00', 'FCRV=4.00;4.00', 'TRCFMT=1;360;E;R;F', ...rLines(dent)].join(CRLF) + CRLF);
+  assert.deepEqual(C.drawingLosses(one), ['DBL', 'FCRV']);
+  // 箱中心以外の基準の穴は図面に描かない
+  const other = read('VCA', ['REQ=FIL', 'JOB=?', 'DRILLE=R;B;20.00;3.00;1.40', 'TRCFMT=1;360;E;R;F', ...rLines(dent)].join(CRLF) + CRLF);
+  assert.deepEqual(C.drawingLosses(other), ['DRILLE']);
+  // 図面から読んだものには元のレコードが無い
+  assert.deepEqual(C.drawingLosses(read('DXF', SOURCES['DXF 両眼(サンプル)'])), []);
 });

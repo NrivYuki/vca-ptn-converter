@@ -4,9 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>vca-ptn Converter</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&amp;family=BIZ+UDGothic:wght@400;700&amp;display=swap">
 <style>
   :root {
+    /* 書体: 本文は BIZ UDPゴシック、数値と VCA のテキストは等幅の BIZ UDゴシック(Google Fonts。つながらないときは端末の同じ書体か、ほかの書体) */
+    --font: "BIZ UDPGothic", "BIZ UDPゴシック", system-ui, "Hiragino Sans", "Yu Gothic UI", sans-serif;
+    --mono: "BIZ UDGothic", "BIZ UDゴシック", ui-monospace, Consolas, monospace;
     --bg: #ffffff; --panel: #ffffff; --band: #f2f3f4; --ink: #1a1a1a; --ink-2: #3a3f44; --muted: #555b61;
     --line: #c8ccd0; --line-light: #dde0e3;
     --accent: #1f3a5f; --accent-ink: #ffffff; --link-hover: #0e1f36;
@@ -28,8 +31,8 @@
   * { box-sizing: border-box; border-radius: 0; }
   [hidden] { display: none !important; }
   html, body { height: 100%; }
-  body { margin: 0; display: flex; flex-direction: column; background: var(--bg); color: var(--ink); font: 14px/1.7 "Noto Sans JP", system-ui, "Hiragino Sans", "Yu Gothic UI", sans-serif; }
-  .mono, input[type=number], textarea, code { font-family: "IBM Plex Mono", ui-monospace, Consolas, monospace; }
+  body { margin: 0; display: flex; flex-direction: column; background: var(--bg); color: var(--ink); font: 14px/1.7 var(--font); }
+  .mono, input[type=number], textarea, code { font-family: var(--mono); }
   a { color: var(--accent); }
   a:hover { color: var(--link-hover); }
 
@@ -81,7 +84,7 @@
   table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; font-size: 13px; }
   th, td { padding: 3px 4px; text-align: right; }
   th:first-child, td:first-child { text-align: left; }
-  thead th { color: var(--muted); font-weight: 500; font-size: 12px; background: var(--band); border-bottom: 1px solid var(--line); }
+  thead th { color: var(--muted); font-weight: 400; font-size: 12px; background: var(--band); border-bottom: 1px solid var(--line); }
   tbody td { border-bottom: 1px solid var(--line-light); }
   tbody td:first-child { color: var(--muted); }
   td small { color: var(--muted); font-size: 11px; }
@@ -112,7 +115,7 @@
   .hud { position: absolute; font-size: 12px; background: var(--panel); border: 1px solid var(--line); padding: 6px 9px; pointer-events: none; }
   .hud.tl { left: 10px; top: 10px; }
   .hud.bl { left: 10px; bottom: 10px; font-variant-numeric: tabular-nums; }
-  .hud.bl b { font: 500 13px "IBM Plex Mono", ui-monospace, Consolas, monospace; }
+  .hud.bl b { font: 700 13px var(--mono); }
   .placeholder { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 12px; }
   svg .outline { fill: var(--panel); stroke: var(--ink); }
   svg .resampled { fill: none; stroke: var(--accent); stroke-dasharray: 1.2 .8; }
@@ -120,7 +123,7 @@
   svg .axis { stroke: var(--muted); }
   svg .ray { stroke: var(--accent); }
   svg .dot { fill: var(--accent); }
-  svg .lbl { fill: var(--muted); font-family: "Noto Sans JP", system-ui, sans-serif; }
+  svg .lbl { fill: var(--muted); font-family: var(--font); }
   svg .gline { stroke: var(--line); }
   svg .curveR { fill: none; stroke: var(--accent); }
   svg .curveL { fill: none; stroke: var(--ink); stroke-dasharray: 6 4; }
@@ -133,17 +136,17 @@
   svg .c.hole { stroke: var(--ink); }
   svg .c.none { stroke: var(--muted); }
   svg .c:hover, svg .c.sel { stroke: var(--warn-ink); }
-  svg .cno { fill: var(--ink); font-family: "IBM Plex Mono", ui-monospace, Consolas, monospace; pointer-events: none; }
+  svg .cno { fill: var(--ink); font-family: var(--mono); pointer-events: none; }
   /* 輪郭の割り当ての表 */
   .contours td { text-align: left; vertical-align: middle; }
-  .contours td:first-child { width: 2.4em; text-align: right; font-family: "IBM Plex Mono", ui-monospace, Consolas, monospace; }
+  .contours td:first-child { width: 2.4em; text-align: right; font-family: var(--mono); }
   .contours td.src { font-size: 12px; color: var(--muted); word-break: break-all; }
-  .contours td.size { white-space: nowrap; font-family: "IBM Plex Mono", ui-monospace, Consolas, monospace; font-size: 12px; }
+  .contours td.size { white-space: nowrap; font-family: var(--mono); font-size: 12px; }
   .contours select { width: 6.5em; padding: 1px 4px; }
   .contours tr.sel td { background: var(--warn-bg); }
   .bottombar { display: flex; flex: none; align-items: stretch; border-top: 1px solid var(--line); background: var(--bg); }
   .bottombar .sum { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 2px 20px; padding: 6px 14px; font-size: 13px; color: var(--ink-2); }
-  .bottombar .sum b { font: 500 14px "IBM Plex Mono", ui-monospace, Consolas, monospace; color: var(--ink); }
+  .bottombar .sum b { font: 700 14px var(--mono); color: var(--ink); }
   .bottombar .sum .unit { color: var(--muted); font-size: 12px; }
   .bottombar .actions { display: flex; flex: none; }
   .bottombar .actions button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; width: 64px; padding: 6px 0; font-size: 11px; color: var(--ink-2); background: var(--bg); border: 0; border-left: 1px solid var(--line); }
@@ -190,8 +193,8 @@
     <div class="panes">
       <div class="panel" role="tabpanel" id="pane-load" aria-labelledby="tab-load">
         <h2>読み込み</h2>
-        <div id="drop" tabindex="0" role="button">ファイルをここに置くか、クリックして選ぶ<br><span class="muted">.oma .vca .dcs .job .ptn .txt .svg .dxf</span></div>
-        <input id="file" type="file" accept=".oma,.vca,.dcs,.job,.ptn,.txt,.svg,.dxf" hidden>
+        <div id="drop" tabindex="0" role="button">ファイルをここに置くか、クリックして選ぶ<br><span class="muted">.vca .oma .dcs .job .ptn .txt .svg .dxf</span></div>
+        <input id="file" type="file" accept=".vca,.oma,.dcs,.job,.ptn,.txt,.svg,.dxf" hidden>
         <div class="row" style="margin-top:6px">
           <button id="sample" type="button">サンプル</button>
           <span class="muted" id="srcinfo">未選択</span>
@@ -303,7 +306,7 @@
       <div class="actions">
         <button data-out="svg" disabled title="SVG で保存"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 4v11 M7 10l5 5 5-5 M5 20h14"/></svg><span>SVG</span></button>
         <button data-out="dxf" disabled title="DXF で保存"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 4v11 M7 10l5 5 5-5 M5 20h14"/></svg><span>DXF</span></button>
-        <button data-out="vca" disabled title="VCA(.oma)で保存"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 4v11 M7 10l5 5 5-5 M5 20h14"/></svg><span>VCA</span></button>
+        <button data-out="vca" disabled title="VCA で保存"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 4v11 M7 10l5 5 5-5 M5 20h14"/></svg><span>VCA</span></button>
         <button data-out="ptn" disabled title="PTN で保存"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M5 6h5l2 2h7v11H5z M12 11v5 M9.5 13.5L12 16l2.5-2.5"/></svg><span>PTN</span></button>
         <button data-out="job" disabled title="JOB で保存"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M5 6h5l2 2h7v11H5z M12 11v5 M9.5 13.5L12 16l2.5-2.5"/></svg><span>JOB</span></button>
       </div>
@@ -475,7 +478,7 @@ tabs.forEach((b, i) => {
     const job = $('#job').value.trim() || set.job || '';
     const stem = job || stemOf(state.name);
     $('#job').placeholder = set.job || '?';
-    const n = $('#npts').value === 'auto' ? autoPoints(set) : +$('#npts').value;
+    const n = $('#npts').value === 'auto' ? Converter.autoPoints(set) : +$('#npts').value;
     $('#nhint').textContent = $('#npts').value === 'auto' ? `${n} 点` : '';
     if (!$('#number').value) $('#number').placeholder = (String(stem).match(/\d+/g) || ['1']).join('').slice(-16);
 
@@ -529,11 +532,6 @@ tabs.forEach((b, i) => {
   }
 
   // 元が等角度の VCA ならその点数、それ以外は 400 点
-  function autoPoints(set) {
-    const ns = EYES.map(e => set.eyes[e]).filter(o => o && o.n && o.mode === 'E').map(o => o.n);
-    return ns.length ? Math.max(...ns) : 400;
-  }
-
   // 上の帯: いま表示している条件
   function renderSpec(set, dbl, n) {
     const eyes = EYES.filter(e => set.eyes[e]);
@@ -809,7 +807,7 @@ tabs.forEach((b, i) => {
     const dev = Converter.deviceFileName($('#brand').value, $('#number').value || $('#number').placeholder);
     const ext = e => ($('#extcase').value === 'upper' ? e.toUpperCase() : e);
     const names = {
-      svg: stem + '.svg', dxf: stem + '.dxf', vca: stem + '.oma',
+      svg: stem + '.svg', dxf: stem + '.dxf', vca: stem + '.vca',
       ptn: dev.name ? dev.name + ext('.ptn') : null, job: dev.name ? dev.name + ext('.job') : null,
     };
     const keepOriginal = state.type === 'vca' && $('#keep').value === '1';
@@ -827,6 +825,8 @@ tabs.forEach((b, i) => {
     if (state.vcaError) msgs.push(['e', head + state.vcaError + '。JOB 番号の欄で直してください']);
     if (state.vca) state.vca.warnings.forEach(m => msgs.push(['w', head + m]));
     if (keepOriginal) msgs.push(['i', 'PTN・JOB は元のファイルの中身をそのまま使います(VCA の点数の設定は使いません)']);
+    const lost = state.set ? Converter.drawingLosses(state.set) : [];
+    if (hasShape && lost.length) msgs.push(['i', `SVG・DXF には玉形・穴・両眼の間隔だけを書きます。${lost.join('・')} は入らないので、SVG・DXF から VCA に戻しても戻りません`]);
     showMsgs('#outmsgs', msgs);
   }
 

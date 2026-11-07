@@ -1,7 +1,7 @@
 /*
  * converter.js — vca-ptn Converter の変換処理
  *
- * VCA(OMA / DCS)・JOB・PTN・SVG・DXF の間で玉形(レンズの外形)を変換する。
+ * VCA・JOB・PTN・SVG・DXF の間で玉形(レンズの外形)を変換する。VCA は .vca で書き出す(読み込みは .oma・.dcs なども受け付ける)。
  * JOB / PTN は「中身が VCA テキストのもの」だけを扱う(機器が書き出す独自形式は非公開のため扱えない)。
  * JOB / PTN の扱いは、OptiBoard の OMA 関連スレッドと公開されている取扱説明書の情報だけに基づく。
  * MIT License
@@ -921,6 +921,41 @@
   }
 
   /**
+   * VCA から読んだ玉形セットを SVG・DXF に書くときに、図面に入らないレコードのラベル(重なりなし、出てきた順)。
+   * 図面に書くのは玉形・箱中心基準(C)の穴・両眼の間隔(DBL)だけ。片眼なら DBL も入らない。
+   * サグ(Z)は平面の図面には入らない。HBOX・VBOX・CIRC は形から求め直すので数えない
+   */
+  const DRAWN = new Set(['REQ', 'ANS', 'CRC', 'STATUS', 'TRCFMT', 'R', 'A', 'ZFMT', 'HBOX', 'VBOX', 'CIRC']);
+  function drawingLosses(set) {
+    if (!set.records) return [];
+    const both = !!(set.eyes.R && set.eyes.L), out = [];
+    for (const r of set.records) {
+      const l = r.label;
+      if (DRAWN.has(l) || out.includes(l)) continue;
+      if (l === 'JOB' && VCA.sideValue(set.rec.JOB, 'R') === undefined) continue;
+      if (l === 'DBL' && both) continue;
+      if (l === 'DRILLE' && !set.otherHoles && !set.drillErrors) continue;
+      out.push(l);
+    }
+    return out;
+  }
+
+  /**
+   * 「VCA の点数」が自動のときの点数。
+   * 等角度(E)の VCA から読んだ玉形は、元の点数のまま(点を減らすと、とがった角が削れて形が変わる)。
+   * それ以外(不等角度の VCA、SVG・DXF の輪郭)は 400 点。ただし輪郭の頂点の数が選べる点数のどれかと同じなら、
+   * その点数にする(このツールが VCA から書き出した SVG・DXF は、頂点が元の VCA の点そのものなので、元の点数に戻る)
+   */
+  const POINT_CHOICES = [360, 400, 500, 512, 800, 1000, 1200, 1440];
+  function autoPoints(set) {
+    const eyes = EYES.map(e => set.eyes[e]).filter(Boolean);
+    const ns = eyes.filter(o => o.n && o.mode === 'E').map(o => o.n);
+    if (ns.length) return Math.max(...ns);
+    const v = Math.max(0, ...eyes.map(o => o.pts.length));
+    return POINT_CHOICES.includes(v) ? v : 400;
+  }
+
+  /**
    * VCA テキスト(REQ=FIL のファイル形式、形式 1・等角度)として書き出す。
    * @param opts {n: 点数, job?: string(空なら JOB=?。12 文字を超える・使えない文字があるときはエラー), dbl?: number,
    *              keepRecords?: boolean(元の VCA のほかのレコードを引き継ぐ)}
@@ -1053,7 +1088,7 @@
   }
 
   return {
-    detect, binaryRatio, fromVCA, fromDXF, fromSVG, toSVG, toDXF, toVCA, jobValue,
+    detect, binaryRatio, fromVCA, fromDXF, fromSVG, toSVG, toDXF, toVCA, jobValue, autoPoints, POINT_CHOICES, drawingLosses,
     resample, radiiToPoints, measure, mirror, fillMirror, centered, deviceFileName, safeFileStem, chain,
     ROLES, roleHint, autoRoles, assemble, offsetOutline, fitHole, holeOutline,
   };

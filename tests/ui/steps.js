@@ -39,7 +39,7 @@ module.exports = async (t) => {
   await load('nojob-frame.vca', 'REQ=FIL\r\n' + R8);
   o = await out();
   ok(/^REQ=FIL\r?\nJOB=\?\r?\n/.test(o), 'JOB の無いファイルは JOB=?: ' + JSON.stringify(o.slice(0, 30)));
-  ok((await t.eval(`${$('n-vca')}.textContent`)) === 'nojob-frame.oma', '保存名は元のファイル名: ' + await t.eval(`${$('n-vca')}.textContent`));
+  ok((await t.eval(`${$('n-vca')}.textContent`)) === 'nojob-frame.vca', '保存名は元のファイル名(VCA は .vca): ' + await t.eval(`${$('n-vca')}.textContent`));
   ok((await t.eval(`${$('job')}.placeholder`)) === '?', 'JOB の欄の案内は ?');
 
   // 4. ファイルの JOB が長い: 誤りを知らせる
@@ -111,7 +111,7 @@ module.exports = async (t) => {
   const C = require('../../converter.js');
   const both = fs.readFileSync(path.join(__dirname, '../../samples/frame-both.vca'), 'latin1');
   const set0 = C.fromVCA(both);
-  const files = [['drop.vca', both, 'VCA テキスト'], ['DROP.PTN', both, 'VCA テキスト'], ['drop.job', both, 'VCA テキスト'],
+  const files = [['drop.vca', both, 'VCA テキスト'], ['drop.oma', both, 'VCA テキスト'], ['DROP.PTN', both, 'VCA テキスト'], ['drop.job', both, 'VCA テキスト'],
     ['drop.dxf', C.toDXF(set0, { dbl: 18 }), 'DXF'], ['drop.svg', Buffer.from(C.toSVG(set0, { dbl: 18 }), 'utf8'), 'SVG']];
   for (const [name, body, kind] of files) {
     for (const [where, tab] of [['#drop', 'load'], ['#outText', 'out']]) {
@@ -123,4 +123,40 @@ module.exports = async (t) => {
       ok(!(await t.eval(`document.querySelector('[data-out=vca]').disabled`)), `${name} を置いたあと VCA を保存できる`);
     }
   }
+
+  // 9. 保存のボタン: 保存するファイルの名前と中身を、ボタンを押して受け取る(ダウンロードは止める)。
+  //    VCA → DXF を保存 → その DXF を読み込む → VCA を保存、の流れで、元の点数・形・穴に戻ることと、図面に入らないレコードの知らせ
+  const saved = k => t.eval(`new Promise(res => {
+    const make = URL.createObjectURL, click = HTMLAnchorElement.prototype.click;
+    HTMLAnchorElement.prototype.click = function () { HTMLAnchorElement.prototype.click = click; window.__savedName = this.download; };
+    URL.createObjectURL = b => { URL.createObjectURL = make; b.arrayBuffer().then(a => setTimeout(() => res({ name: window.__savedName, body: Array.from(new Uint8Array(a), c => String.fromCharCode(c)).join('') }), 0)); return 'blob:saved'; };
+    document.querySelector('[data-out=${k}]').click();
+  })`);
+  const rLines = vals => { const out = []; for (let i = 0; i < vals.length; i += 15) out.push('R=' + vals.slice(i, i + 15).join(';')); return out; };
+  const hole = ['REQ=FIL', 'JOB=SAVE1', 'DBL=18.00', 'FCRV=4.00;4.00', 'DRILLE=R;C;20.00;3.00;1.40', 'DRILLE=L;C;-20.00;3.00;1.40',
+    'TRCFMT=1;360;E;R;F', ...rLines(dent), 'TRCFMT=1;360;E;L;F', ...rLines(dent.map((_, i) => dent[(540 - i) % 360]))].join('\r\n') + '\r\n';
+  await t.eval(`document.getElementById('tab-load').click()`);
+  await load('save1.vca', hole);
+  const outs = {};
+  for (const k of ['svg', 'dxf', 'vca', 'ptn', 'job']) outs[k] = await saved(k);
+  ok(outs.vca.name === 'SAVE1.vca' && outs.svg.name === 'SAVE1.svg' && outs.dxf.name === 'SAVE1.dxf', `保存名は JOB と拡張子(VCA は .vca): ${outs.vca.name} / ${outs.svg.name} / ${outs.dxf.name}`);
+  ok(/\.ptn$/.test(outs.ptn.name) && /\.job$/.test(outs.job.name), `PTN・JOB の保存名: ${outs.ptn.name} / ${outs.job.name}`);
+  // 1 行目 REQ・2 行目 JOB(7.5.4)。改行は CR LF のまま(画面のテキスト欄の値は LF になるので、それを保存していないこと)。
+  // 元の FCRV・DRILLE を引き継ぎ、玉形は元の 360 点
+  const vcaLines = outs.vca.body.split('\r\n');
+  ok(outs.vca.body.startsWith('REQ=FIL\r\nJOB=SAVE1\r\nDBL=18.00\r\n') && !/[^\r]\n/.test(outs.vca.body) && vcaLines.includes('FCRV=4.00;4.00')
+    && vcaLines.filter(l => l.startsWith('DRILLE=')).join('|') === 'DRILLE=R;C;20.00;3.00;1.40|DRILLE=L;C;-20.00;3.00;1.40' && vcaLines.includes('TRCFMT=1;360;E;R;F'),
+    '保存する VCA: REQ=FIL・JOB=SAVE1 で始まり、CR LF のまま、FCRV・DRILLE を引き継ぎ 360 点');
+  ok(outs.ptn.body === hole && outs.job.body === hole, 'PTN・JOB は「元の VCA をそのまま使う」なら元のファイルの中身');
+  ok((await t.eval(`${$('outmsgs')}.textContent`)).includes('JOB・FCRV は入らない'), 'SVG・DXF に入らないレコードを知らせる: ' + await t.eval(`${$('outmsgs')}.textContent`));
+  await load('SAVE1.dxf', outs.dxf.body);
+  ok((await t.eval(`${$('nhint')}.textContent`)) === '360 点', 'DXF を読み込み直すと、VCA の点数の自動は元の 360 点: ' + await t.eval(`${$('nhint')}.textContent`));
+  const back = await saved('vca');
+  ok(back.name === 'SAVE1.vca', 'DXF から作った VCA の保存名は DXF のファイル名: ' + back.name);
+  const s0 = C.fromVCA(hole), s1 = C.fromVCA(back.body);
+  const r0 = C.resample(C.centered(s0.eyes.R.pts), 360).radii, r1 = C.resample(C.centered(s1.eyes.R.pts), 360).radii;
+  const dmax = Math.max(...r0.map((v, i) => Math.abs(v - r1[i])));
+  ok(/^REQ=FIL\r\nJOB=\?\r\nDBL=18\.00\r\n/.test(back.body) && /\r\nTRCFMT=1;360;E;R;F\r\n/.test(back.body) && dmax <= 0.01,
+    `DXF から作った VCA: JOB=?・DBL=18.00・360 点で、形の違い ${dmax.toFixed(4)} mm`);
+  ok((back.body.match(/^DRILLE=[RL];C;/gm) || []).length === 2 && !/FCRV/.test(back.body), 'DXF から作った VCA: 穴は両眼に 1 つずつ、FCRV は無い');
 };
