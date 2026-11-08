@@ -7,9 +7,10 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&amp;family=BIZ+UDGothic:wght@400;700&amp;display=swap">
 <style>
   :root {
-    /* 書体: 本文は BIZ UDPゴシック、数値と VCA のテキストは等幅の BIZ UDゴシック(Google Fonts。つながらないときは端末の同じ書体か、ほかの書体) */
-    --font: "BIZ UDPGothic", "BIZ UDPゴシック", system-ui, "Hiragino Sans", "Yu Gothic UI", sans-serif;
-    --mono: "BIZ UDGothic", "BIZ UDゴシック", ui-monospace, Consolas, monospace;
+    /* 書体: 本文は BIZ UDPゴシック、数値と VCA のテキストは等幅の BIZ UDゴシック。端末に入っていればそれを使い、無ければ Google Fonts から読む
+       (Web フォント版は、Windows では小さい字でハイフンと下線が消えることがあるので、端末の書体を先にする) */
+    --font: "BIZ UDPゴシック", "BIZ UDPGothic", system-ui, "Hiragino Sans", "Yu Gothic UI", sans-serif;
+    --mono: "BIZ UDゴシック", "BIZ UDGothic", ui-monospace, Consolas, monospace;
     --bg: #ffffff; --panel: #ffffff; --band: #f2f3f4; --ink: #1a1a1a; --ink-2: #3a3f44; --muted: #555b61;
     --line: #c8ccd0; --line-light: #dde0e3;
     --accent: #1f3a5f; --accent-ink: #ffffff; --link-hover: #0e1f36;
